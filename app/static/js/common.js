@@ -315,6 +315,7 @@
     if (banner) banner.hidden = true; // ingen advarsel under første opkobling
     setTimeout(function () { if (!Live.connected && banner) banner.hidden = false; }, 2500);
     connect();
+    Live.refresh(); // vis tilstanden med det samme, mens WebSocket forbinder
     // Opdatér løbende ure hvert sekund.
     setInterval(Live.tick, 1000);
   };

@@ -15,7 +15,14 @@
 
   <div id="stage-summary" class="stage-summary"></div>
 
-  <ul id="stage-list" class="stage-list" role="listbox" aria-label="Punkter"></ul>
+  <div class="stage-body">
+    <ul id="stage-list" class="stage-list" role="listbox" aria-label="Punkter"></ul>
+    <nav id="stage-pager" class="stage-pager" aria-label="Bladre i listen" hidden>
+      <button type="button" id="btn-page-up" class="btn pager-btn" aria-label="Forrige side"><span aria-hidden="true">▲</span><span class="pager-text">Forrige</span></button>
+      <span id="pager-info" class="pager-info"></span>
+      <button type="button" id="btn-page-down" class="btn pager-btn" aria-label="Næste side"><span aria-hidden="true">▼</span><span class="pager-text">Næste</span></button>
+    </nav>
+  </div>
 
   <footer class="stage-actions">
     <button type="button" id="btn-undo" class="btn btn-xl btn-secondary" disabled>Fortryd</button>
@@ -23,4 +30,4 @@
   </footer>
 </div>
 {% endblock %}
-{% block scripts %}<script src="{{ url_for('static', path='js/stage.js') }}?v=4"></script>{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', path='js/stage.js') }}?v=5"></script>{% endblock %}

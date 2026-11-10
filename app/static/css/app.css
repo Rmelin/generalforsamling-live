@@ -394,8 +394,9 @@ label > input, label > select, label > textarea { color: var(--text); font-size:
 
 .stage-summary { padding: 6px 12px 0; font-size: 0.95rem; color: var(--text-muted); }
 
+.stage-body { flex: 1; min-height: 0; display: flex; }
 .stage-list {
-  list-style: none; margin: 0; padding: 8px 12px; flex: 1; min-height: 0; overflow-y: auto;
+  position: relative; list-style: none; margin: 0; padding: 8px 12px; flex: 1; min-width: 0; min-height: 0; overflow-y: auto;
   display: flex; flex-direction: column; gap: 8px; -webkit-overflow-scrolling: touch;
 }
 .stage-item {
@@ -422,6 +423,16 @@ label > input, label > select, label > textarea { color: var(--text); font-size:
 .stage-actions .btn { white-space: normal; flex-direction: column; gap: 2px; line-height: 1.15; text-align: center; overflow: hidden; }
 .btn-sub { font-size: 0.75em; font-weight: 600; opacity: 0.85; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
+/* Bladring: kolonne til højre (liggende), række under listen (stående) */
+.stage-pager {
+  display: flex; flex-direction: column; align-items: stretch; justify-content: space-between; gap: 8px;
+  width: 84px; flex-shrink: 0; padding: 8px 12px 8px 0;
+}
+.pager-btn { flex: 1; flex-direction: column; font-size: 1.6rem; border-radius: 14px; border-width: 2px; min-height: 64px; padding: 4px; }
+.pager-btn:not(:disabled) { border-color: var(--accent); }
+.pager-text { display: none; font-size: 0.95rem; }
+.pager-info { text-align: center; font-weight: 800; font-size: 1.05rem; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+
 /* Lav liggende skærm (800×480): kompakt top og knapper */
 @media (orientation: landscape) and (max-height: 560px) {
   .stage-top { padding: 6px 10px; }
@@ -443,6 +454,11 @@ label > input, label > select, label > textarea { color: var(--text); font-size:
   .stage-status-row { justify-content: space-between; }
   .stage-status-title { order: 3; flex-basis: 100%; white-space: normal; overflow-wrap: anywhere; }
   .stage-actions { grid-template-columns: 1fr 1.7fr; }
+  .stage-body { flex-direction: column; }
+  .stage-pager { flex-direction: row; align-items: center; width: auto; padding: 0 12px 8px; }
+  .pager-btn { flex-direction: row; gap: 8px; min-height: 56px; font-size: 1.2rem; }
+  .pager-text { display: inline; font-size: 1.1rem; }
+  .pager-info { min-width: 56px; }
   .stage-actions .btn-xl { min-height: 76px; font-size: 1.2rem; padding: 10px 12px; }
 }
 @media (max-width: 520px) {

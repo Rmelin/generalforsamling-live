@@ -51,6 +51,7 @@ exec chromium-browser \
   --noerrdialogs --disable-infobars --no-first-run \
   --disable-translate --disable-features=Translate \
   --disable-pinch --overscroll-history-navigation=0 \
+  --touch-events=enabled \
   --check-for-update-interval=31536000 \
   --password-store=basic
 ```
@@ -97,6 +98,10 @@ Monitor-Pi'er kræver intet login.
   knapper større.
 - **Skærmrotation:** Brug *Screen Configuration* i desktoppen, eller f.eks.
   `wlr-randr --output DSI-1 --transform 90` (se navnet på udgangen med `wlr-randr`).
+- **Rulning på touchskærm:** Er der flere punkter, end der kan være på skærmen, vises store knapper
+  (▲ / ▼ eller *Forrige* / *Næste*) til at bladre. Man kan også trække listen op og ned med fingeren. Det virker
+  også, når Pi'en sender tryk som musehændelser. Flaget `--touch-events=enabled` i kiosk-scriptet slår
+  Chromiums egen touch-rulning til.
 - **Brug kiosk-mode:** Uden `--kiosk` tager Chromiums faneblade og adresselinje omkring en fjerdedel af en
   800 px høj skærm.
 - Afslut kiosk-mode med `Alt+F4` eller ved at logge ind via SSH og køre `pkill chromium`.

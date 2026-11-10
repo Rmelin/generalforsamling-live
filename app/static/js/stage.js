@@ -47,10 +47,80 @@
     reqBtn.innerHTML = '<span>Anmod om klargøring</span>' +
       (sel && sel.status === "pending" ? '<span class="btn-sub">' + esc(sel.title) + "</span>" : "");
     L.tick();
+    updatePager();
   }
+
+  // ------------------------------------------------------------ bladring
+  // Mange touchskærme på Raspberry Pi sender tryk som musehændelser, så man
+  // ikke kan swipe. Derfor: store Forrige/Næste-knapper + træk-for-at-rulle.
+
+  var listEl = $("stage-list");
+
+  function itemTops() {
+    var pad = parseFloat(getComputedStyle(listEl).paddingTop) || 0;
+    return Array.prototype.map.call(listEl.querySelectorAll(".stage-item"), function (li) {
+      return li.offsetTop - pad;
+    });
+  }
+
+  function page(dir) {
+    var step = Math.max(60, listEl.clientHeight - 24);
+    var cur = listEl.scrollTop, target = cur + dir * step, tops = itemTops(), best = target, i;
+    if (dir > 0) {
+      // Det punkt, der er delvist synligt nederst, kommer øverst på næste side.
+      for (i = 0; i < tops.length; i++) if (tops[i] <= target && tops[i] > cur + 4) best = tops[i];
+    } else {
+      for (i = tops.length - 1; i >= 0; i--) if (tops[i] >= target && tops[i] < cur - 4) best = tops[i];
+    }
+    listEl.scrollTo({ top: Math.max(0, best), behavior: "smooth" });
+  }
+
+  var pagerRaf = 0;
+  function updatePager() {
+    cancelAnimationFrame(pagerRaf);
+    pagerRaf = requestAnimationFrame(function () {
+      var pager = $("stage-pager");
+      var max = listEl.scrollHeight - listEl.clientHeight;
+      var overflow = max > 2;
+      if (pager.hidden === overflow) { pager.hidden = !overflow; return updatePager(); }
+      if (!overflow) return;
+      var step = Math.max(60, listEl.clientHeight - 24);
+      var pages = Math.max(2, Math.ceil(max / step) + 1);
+      var atEnd = listEl.scrollTop >= max - 2;
+      var current = atEnd ? pages : Math.min(pages - 1, Math.round(listEl.scrollTop / step) + 1);
+      $("pager-info").textContent = current + "/" + pages;
+      $("btn-page-up").disabled = listEl.scrollTop <= 2;
+      $("btn-page-down").disabled = atEnd;
+    });
+  }
+
+  $("btn-page-up").addEventListener("click", function () { page(-1); });
+  $("btn-page-down").addEventListener("click", function () { page(1); });
+  listEl.addEventListener("scroll", updatePager, { passive: true });
+  window.addEventListener("resize", updatePager);
+
+  // Træk-for-at-rulle, når touch kommer ind som mus.
+  var drag = null, suppressClick = false;
+  listEl.addEventListener("pointerdown", function (e) {
+    if (e.pointerType === "touch") return; // ægte touch ruller selv
+    drag = { y: e.clientY, top: listEl.scrollTop, moved: false, id: e.pointerId };
+  });
+  listEl.addEventListener("pointermove", function (e) {
+    if (!drag) return;
+    var dy = e.clientY - drag.y;
+    if (!drag.moved && Math.abs(dy) > 10) {
+      drag.moved = true;
+      try { listEl.setPointerCapture(drag.id); } catch (err) {}
+    }
+    if (drag.moved) listEl.scrollTop = drag.top - dy;
+  });
+  function endDrag() { if (drag && drag.moved) suppressClick = true; drag = null; }
+  listEl.addEventListener("pointerup", endDrag);
+  listEl.addEventListener("pointercancel", endDrag);
 
 
   $("stage-list").addEventListener("click", function (e) {
+    if (suppressClick) { suppressClick = false; return; }
     var row = e.target.closest(".stage-item");
     if (!row) return;
     var id = parseInt(row.getAttribute("data-id"), 10);
