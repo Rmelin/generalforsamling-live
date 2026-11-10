@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block body %}
+<main class="landing">
+  <h1>{{ event_name }}</h1>
+  <p class="muted">Vælg skærm</p>
+  <nav class="landing-grid">
+    <a class="landing-card" href="/foh">
+      <strong>FOH</strong>
+      <span>Administration og afvikling</span>
+      <small>Kræver login</small>
+    </a>
+    <a class="landing-card" href="/stage">
+      <strong>Scene</strong>
+      <span>Touchskærm til dirigenter</span>
+      <small>Kræver sceneadgangskode</small>
+    </a>
+    <a class="landing-card" href="/monitor">
+      <strong>Monitor</strong>
+      <span>Informationsskærm til teknikere</span>
+      <small>Kun visning – intet login</small>
+    </a>
+  </nav>
+  <p class="landing-foot">
+    {% if actor %}Logget ind som <strong>{{ actor.username }}</strong> ({{ actor.role }}) · <a href="/logout">Log ud</a>{% endif %}
+    <button type="button" class="btn btn-ghost btn-sm" data-theme-toggle>Tema</button>
+  </p>
+</main>
+{% endblock %}
+{% block scripts %}<script>Live.initTheme();</script>{% endblock %}

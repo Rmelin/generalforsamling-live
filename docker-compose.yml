@@ -1,0 +1,16 @@
+services:
+  live:
+    build: .
+    image: generalforsamling-live:latest
+    container_name: generalforsamling-live
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_PATH: /data/live.db
+    ports:
+      - "${PORT:-8000}:8000"
+    volumes:
+      - live-data:/data
+
+volumes:
+  live-data:

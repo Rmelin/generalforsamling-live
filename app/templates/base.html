@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="da" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark light">
+  <title>{% block title %}{{ event_name }}{% endblock %}</title>
+  <script>
+    // Sæt tema før første tegning, så skærmen ikke blinker.
+    (function () {
+      var t = "dark";
+      try { t = localStorage.getItem("live-theme") || "dark"; } catch (e) {}
+      if (t !== "light" && t !== "dark" && t !== "auto") t = "dark";
+      document.documentElement.setAttribute("data-theme", t);
+    })();
+  </script>
+  <link rel="stylesheet" href="{{ url_for('static', path='css/app.css') }}?v=1">
+</head>
+<body class="page-{{ page }}">
+  <div id="conn-banner" class="conn-banner" role="alert" hidden>
+    <span class="conn-banner-icon" aria-hidden="true">⚠</span>
+    <span id="conn-banner-text">Ingen forbindelse til serveren – forsøger igen …</span>
+  </div>
+  {% block body %}{% endblock %}
+  <div id="toasts" class="toasts" aria-live="assertive"></div>
+  <script src="{{ url_for('static', path='js/common.js') }}?v=1"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

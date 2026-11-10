@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Scene – {{ event_name }}{% endblock %}
+{% block body %}
+<div class="stage">
+  <header class="stage-top">
+    <div id="stage-now" class="stage-now"></div>
+    <div class="stage-tools">
+      {% include "_topbar_tools.html" %}
+      <a class="btn btn-ghost btn-sm" href="/logout">Log ud</a>
+    </div>
+  </header>
+
+  <div id="stage-status" class="stage-status"></div>
+
+  <ul id="stage-list" class="stage-list" role="listbox" aria-label="Punkter"></ul>
+
+  <footer class="stage-actions">
+    <button type="button" id="btn-undo" class="btn btn-xl btn-secondary" disabled>Fortryd</button>
+    <button type="button" id="btn-request" class="btn btn-xl btn-primary" disabled>Anmod om klargøring</button>
+  </footer>
+</div>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', path='js/stage.js') }}?v=1"></script>{% endblock %}

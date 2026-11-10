@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Monitor – {{ event_name }}{% endblock %}
+{% block body %}
+<div class="monitor">
+  <header class="monitor-top">
+    <div class="monitor-title">{{ event_name }}</div>
+    <div class="monitor-meta"><span id="remaining"></span></div>
+    <div class="monitor-tools">
+      {% include "_topbar_tools.html" %}
+      <button type="button" class="btn btn-ghost btn-sm" id="btn-fullscreen">Fuldskærm</button>
+    </div>
+  </header>
+  <main class="monitor-grid">
+    <section id="mon-now" class="mon-card mon-now" aria-label="Aktuelt indslag"></section>
+    <section id="mon-next" class="mon-card mon-next" aria-label="Næste indslag"></section>
+    <section class="mon-card mon-upcoming" aria-label="Kommende indslag">
+      <h2 class="mon-label">Kommende</h2>
+      <ol id="mon-list" class="mon-list"></ol>
+    </section>
+  </main>
+</div>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', path='js/monitor.js') }}?v=1"></script>{% endblock %}

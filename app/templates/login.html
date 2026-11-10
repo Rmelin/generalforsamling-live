@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Login – {{ event_name }}{% endblock %}
+{% block body %}
+<main class="login">
+  <h1>{{ event_name }}</h1>
+  <div class="login-tabs" role="tablist">
+    <a role="tab" class="login-tab {% if mode == 'foh' %}active{% endif %}" href="/login?next=/foh" aria-selected="{{ 'true' if mode == 'foh' else 'false' }}">FOH</a>
+    <a role="tab" class="login-tab {% if mode == 'stage' %}active{% endif %}" href="/login?next=/stage" aria-selected="{{ 'true' if mode == 'stage' else 'false' }}">Scene</a>
+  </div>
+  <form method="post" action="/login" class="login-form card">
+    <input type="hidden" name="mode" value="{{ mode }}">
+    <input type="hidden" name="next" value="{{ next }}">
+    {% if error %}<p class="form-error" role="alert">{{ error }}</p>{% endif %}
+    {% if mode == 'foh' %}
+      <label>Brugernavn
+        <input name="username" autocomplete="username" required autofocus>
+      </label>
+    {% endif %}
+    <label>{% if mode == 'stage' %}Sceneadgangskode{% else %}Adgangskode{% endif %}
+      <input name="password" type="password" autocomplete="current-password" required {% if mode == 'stage' %}autofocus{% endif %}>
+    </label>
+    <button class="btn btn-primary btn-lg" type="submit">Log ind</button>
+  </form>
+  <p class="muted"><a href="/monitor">Åbn monitor (intet login)</a> · <button type="button" class="btn btn-ghost btn-sm" data-theme-toggle>Tema</button></p>
+</main>
+{% endblock %}
+{% block scripts %}<script>Live.initTheme();</script>{% endblock %}

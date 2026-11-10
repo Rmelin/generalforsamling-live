@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}FOH – {{ event_name }}{% endblock %}
+{% block body %}
+<header class="topbar">
+  <div class="topbar-title"><span class="role-tag">FOH</span> {{ event_name }}</div>
+  <div class="topbar-tools">
+    <label class="toggle"><input type="checkbox" id="toggle-archive"> Vis afsluttede</label>
+    <label class="toggle"><input type="checkbox" id="toggle-history"> Historik</label>
+    {% include "_topbar_tools.html" %}
+    <a class="btn btn-ghost btn-sm" href="/monitor" target="_blank" rel="noopener">Monitor ↗</a>
+    <a class="btn btn-ghost btn-sm" href="/logout">Log ud ({{ actor.username }})</a>
+  </div>
+</header>
+
+<main class="foh-grid">
+  <section class="foh-left" aria-label="Punkter">
+    <form id="quick-add" class="quick-add card" autocomplete="off">
+      <input id="qa-title" name="title" placeholder="Nyt punkt – titel" maxlength="200" required aria-label="Titel">
+      <select id="qa-type" name="item_type" aria-label="Type">
+        {% for key, label in item_types.items() %}<option value="{{ key }}">{{ label }}</option>{% endfor %}
+      </select>
+      <input id="qa-duration" name="duration" placeholder="mm:ss" inputmode="numeric" aria-label="Varighed (mm:ss)" class="input-duration">
+      <button class="btn btn-primary" type="submit">Tilføj</button>
+    </form>
+
+    <div id="request-alert" class="request-alert" hidden></div>
+
+    <div class="list-head">
+      <h2>Program <span class="muted" id="active-count"></span></h2>
+    </div>
+    <ol id="item-list" class="item-list" aria-live="polite"></ol>
+
+    <section id="archive" class="archive" hidden>
+      <h2>Afsluttede og annullerede</h2>
+      <ol id="archive-list" class="item-list item-list-archive"></ol>
+    </section>
+  </section>
+
+  <section class="foh-right" aria-label="Afvikling">
+    <article id="now-card" class="card now-card"></article>
+    <article id="next-card" class="card next-card"></article>
+    <article id="editor-card" class="card editor-card">
+      <p class="muted">Vælg et punkt i listen for at redigere det.</p>
+    </article>
+    <article id="history-card" class="card history-card" hidden>
+      <div class="card-head"><h2>Historik</h2><button type="button" class="btn btn-ghost btn-sm" id="history-refresh">Opdatér</button></div>
+      <div class="history-scroll"><table class="history-table"><thead><tr><th>Tid</th><th>Punkt</th><th>Handling</th><th>Status</th><th>Af</th><th>Detaljer</th></tr></thead><tbody id="history-body"></tbody></table></div>
+    </article>
+  </section>
+</main>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', path='js/foh.js') }}?v=1"></script>{% endblock %}
