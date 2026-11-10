@@ -165,3 +165,23 @@ def test_text_helpers(env):
     assert mod.ascii_text("Æblegrød – på Øen") == "Aeblegroed - paa Oeen"
     assert mod.fmt_dur(95) == "1:35" and mod.fmt_dur(-5) == "+0:05"
     assert mod.fmt_approx(300) == "ca. 5 min"
+
+
+def test_offline_shows_reason(env):
+    mod, _foh, _stage, online = env
+    app = mod.App()
+    online["up"] = False
+    app.poll()
+    assert app.online is False and "ECONNREFUSED" in app.error or app.error
+    # Kendte fejlkoder oversættes
+    assert "Afvist" in mod.explain_error(OSError(111))
+    assert "Timeout" in mod.explain_error(OSError(110))
+    assert "slaa serveradressen op" in mod.explain_error(OSError(-2))
+
+
+def test_wrong_token_is_explained(env):
+    mod = env[0]
+    app = mod.App()
+    app.server.headers["Authorization"] = "Bearer forkert"
+    assert app.poll() is False
+    assert "401" in app.error and "DEVICE_TOKEN" in app.error

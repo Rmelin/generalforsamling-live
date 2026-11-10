@@ -43,6 +43,18 @@ Prestoen viser afviklingen og har store knapper til de vigtigste FOH-handlinger.
 
 ## Fejlfinding
 
+Når der står **INGEN FORBINDELSE**, viser Prestoen årsagen, serveradressen og sin egen IP-adresse.
+Den samme besked skrives i Thonny-konsollen.
+
+| Besked | Betyder | Løsning |
+|---|---|---|
+| Noegle afvist (401) | Prestoen når serveren, men nøglen passer ikke | Sæt samme `DEVICE_TOKEN` i `.env` og `config.py`, og genstart serveren |
+| Afvist (111) | IP'en svarer, men intet program lytter på porten | Tjek porten i `SERVER`. Kører du uden Docker, så start med `--host 0.0.0.0` |
+| Timeout (110/116) | Ingen svarer på adressen | Forkert IP, forskellige netværk, eller firewall på serveren |
+| Ingen rute (113) | Prestoen og serveren er på hvert sit net | Kom på samme WiFi/netværk |
+| Kan ikke slaa serveradressen op | Navnet i `SERVER` findes ikke | Brug serverens IP-adresse i stedet for et navn |
+| WiFi er afbrudt | Prestoen har mistet WiFi | Den forbinder selv igen. Tjek `WIFI_SSID` og adgangskode |
+
 - **OFFLINE:**
   - Kontrollér, at Prestoen er på samme netværk som serveren.
   - Kontrollér, at `SERVER` bruger serverens IP-adresse og port, f.eks. `http://192.168.1.10:8000`.

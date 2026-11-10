@@ -81,6 +81,46 @@ STATUS_TAG = {
 }
 
 
+# ---------------------------------------------------------------- fejl
+
+# MicroPython/lwIP fejlkoder -> forklaring på skærmen
+_ERRNO = {
+    -2: "Kan ikke slaa serveradressen op (forkert navn?)",
+    -3: "Kan ikke slaa serveradressen op (forkert navn?)",
+    103: "Forbindelsen blev afbrudt",
+    104: "Serveren lukkede forbindelsen",
+    110: "Timeout - forkert IP, eller firewall?",
+    111: "Afvist - kører serveren paa den port?",
+    113: "Ingen rute til serveren - forkert net?",
+    116: "Timeout - forkert IP, eller firewall?",
+}
+
+
+class HttpError(Exception):
+    def __init__(self, status):
+        Exception.__init__(self, "HTTP %d" % status)
+        self.status = status
+
+
+def explain_error(exc):
+    """Kort, forståelig forklaring på en fejl ved kald til serveren."""
+    if isinstance(exc, HttpError):
+        if exc.status == 401:
+            return "Noegle afvist (401): DEVICE_TOKEN passer ikke, eller er ikke sat paa serveren"
+        if exc.status == 404:
+            return "Ukendt adresse (404): er serveren opdateret?"
+        return "Serveren svarede %d" % exc.status
+    code = None
+    args = getattr(exc, "args", ())
+    if args and isinstance(args[0], int):
+        code = args[0]
+    elif getattr(exc, "errno", None) is not None:
+        code = exc.errno
+    if code in _ERRNO:
+        return _ERRNO[code] + " (%d)" % code
+    return ascii_text(("%s: %s" % (type(exc).__name__, exc))[:80])
+
+
 # ---------------------------------------------------------------- server
 
 
@@ -113,7 +153,7 @@ class Server:
     def state(self):
         status, payload = self._req("GET", "/api/device/state")
         if status != 200:
-            raise RuntimeError("HTTP %d" % status)
+            raise HttpError(status)
         return payload
 
     def action(self, item, action):
@@ -143,6 +183,7 @@ class App:
         self.pressed = None
         self.press_xy = (0, 0)
         self.last_requests = 0
+        self.error = None
         self.dirty = True
         self.pens = {}
         if display is not None:
@@ -164,12 +205,18 @@ class App:
         self.last_poll = ticks_ms()
         try:
             st = self.server.state()
-        except Exception as exc:  # netværksfejl
-            if self.online:
+        except Exception as exc:  # netværks- eller serverfejl
+            reason = explain_error(exc)
+            if not wifi_ok():
+                reason = "WiFi er afbrudt - forbinder igen"
+                reconnect_wifi()
+            if self.online or reason != self.error:
                 self.dirty = True
+                print("Presto OFFLINE:", reason, "| server:", config.SERVER)
             self.online = False
-            self.error = str(exc)
+            self.error = reason
             return False
+        self.error = None
         if not self.online or st != self.state:
             self.dirty = True
         self.online = True
@@ -341,6 +388,19 @@ class App:
 
         # NU
         y = 21
+        if not self.online and self.error:
+            # Vis årsagen, så fejlen kan findes uden computer
+            self._rect(2, y, W - 4, 140, "red")
+            self._text("INGEN FORBINDELSE", 8, y + 4, "white", 2)
+            self._text(self.error, 8, y + 24, "white", 1, W - 16)
+            self._text("Server: " + config.SERVER, 8, y + 92, "white", 1, W - 16)
+            self._text("Presto IP: " + wifi_ip(), 8, y + 106, "white", 1, W - 16)
+            self._text("Proever igen hvert sekund ...", 8, y + 122, "white", 1, W - 16)
+            self._layout_buttons(cur, nxt)
+            if self.presto is not None:
+                self.presto.update()
+            self.dirty = False
+            return
         if cur:
             self._rect(2, y, W - 4, 72, "red")
             self._rect(5, y + 3, W - 10, 66, "yellow")
@@ -493,6 +553,40 @@ class App:
 # ---------------------------------------------------------------- opstart
 
 
+def _wlan():
+    try:
+        import network
+        return network.WLAN(network.STA_IF)
+    except ImportError:  # test på computer
+        return None
+
+
+def wifi_ok():
+    w = _wlan()
+    return True if w is None else w.isconnected()
+
+
+def wifi_ip():
+    w = _wlan()
+    if w is None:
+        return "-"
+    try:
+        return w.ifconfig()[0] if w.isconnected() else "ikke forbundet"
+    except Exception:
+        return "?"
+
+
+def reconnect_wifi():
+    w = _wlan()
+    if w is None:
+        return
+    try:
+        w.active(True)
+        w.connect(config.WIFI_SSID, config.WIFI_PASSWORD)
+    except Exception:
+        pass
+
+
 def connect_wifi(display_msg):
     import network
 
@@ -524,6 +618,7 @@ def main():
     while not connect_wifi(msg):
         msg("WiFi fejlede - proever igen")
         time.sleep(3)
+    print("WiFi OK, Presto IP:", wifi_ip(), "| server:", config.SERVER)
     msg("Forbinder til server ...")
     app.run(presto.touch)
 
