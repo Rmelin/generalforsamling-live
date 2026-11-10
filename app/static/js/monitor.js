@@ -17,7 +17,7 @@
 
     $("remaining").textContent = queue.length + (queue.length === 1 ? " punkt tilbage" : " punkter tilbage");
 
-    $("mon-now").className = "mon-card mon-now" + (cur ? " live" : "");
+    $("mon-now").className = "mon-card mon-now" + (cur ? " live live-hl" : "");
     $("mon-now").innerHTML = '<h2 class="mon-label">Nu</h2>' + (cur
       ? '<div class="mon-now-title">' + esc(cur.title) + "</div>" +
         '<div class="mon-row">' + L.typeChip(cur.item_type) + L.optChip(cur) + L.statusBadge("live", { big: true }) + "</div>" +

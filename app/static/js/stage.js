@@ -7,10 +7,11 @@
 
   function render() {
     var cur = L.current();
+    $("stage-now").className = "stage-now" + (cur ? " live-hl" : "");
     $("stage-now").innerHTML = cur
       ? '<div class="stage-now-label">' + L.statusBadge("live") + "</div>" +
-        '<div class="stage-now-title">' + esc(cur.title) + "</div>" +
-        (L.isTimed(cur) && cur.duration_seconds ? '<div class="stage-now-time">' + L.countdown(cur) + "</div>" : "")
+        (L.isTimed(cur) && cur.duration_seconds ? '<div class="stage-now-time">' + L.countdown(cur) + "</div>" : "") +
+        '<div class="stage-now-title">' + esc(cur.title) + "</div>"
       : '<div class="stage-now-label muted">Intet i gang</div>';
 
     var chosen = L.chosen();
@@ -142,6 +143,17 @@
 
   // Forhindr dobbelttryk-zoom og kontekstmenu på touchskærm.
   document.addEventListener("contextmenu", function (e) { e.preventDefault(); });
+
+  // Justerbar kant til skærme, der skjuler pixels i kanten:  /stage?kant=16
+  // Gemmes i browseren. /stage?kant=0 nulstiller.
+  (function () {
+    var v = new URLSearchParams(location.search).get("kant");
+    try {
+      if (v !== null) localStorage.setItem("live-stage-inset", String(Math.max(0, Math.min(80, parseInt(v, 10) || 0))));
+      v = localStorage.getItem("live-stage-inset");
+    } catch (e) {}
+    if (v) document.documentElement.style.setProperty("--stage-inset", parseInt(v, 10) + "px");
+  })();
 
   L.initTheme();
   L.initFullscreen();

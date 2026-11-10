@@ -370,12 +370,17 @@ label > input, label > select, label > textarea { color: var(--text); font-size:
  * Skal virke på 800×480 og 1280×720 (liggende) samt 480×800 og 720×1280 (stående). */
 
 .page-stage { user-select: none; -webkit-user-select: none; overscroll-behavior: none; }
-.stage { display: flex; flex-direction: column; height: 100vh; height: 100dvh; overflow: hidden; }
+.stage {
+  display: flex; flex-direction: column; height: 100vh; height: 100dvh; overflow: hidden;
+  /* --stage-inset: ekstra kant til skærme, der skjuler pixels (sæt med /stage?kant=16) */
+  padding: var(--stage-inset, 0px);
+}
 .stage-top {
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
   padding: 8px 12px; background: var(--bg-elev); border-bottom: 1px solid var(--border);
 }
-.stage-now { display: flex; align-items: center; gap: 12px; min-width: 0; flex: 1; }
+.stage-now { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1; border-radius: 12px; }
+.stage-now.live-hl { padding: 6px 10px; }
 .stage-now-label { flex-shrink: 0; }
 .stage-now-title { font-size: 1.45rem; font-weight: 800; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .stage-now-time { font-size: 1.45rem; font-weight: 800; font-variant-numeric: tabular-nums; flex-shrink: 0; }
@@ -578,3 +583,25 @@ label > input, label > select, label > textarea { color: var(--text); font-size:
 .countdown { font-variant-numeric: tabular-nums; }
 .mon-times-2 { grid-template-columns: repeat(2, 1fr); }
 @media (max-width: 560px) { .quick-add { grid-template-columns: 1fr 1fr; } }
+
+/* ------------------------------------------------------------ Afvikles: rød kant + gul fyld
+ * Samme markering på scene, monitor og FOH, så det aktuelle punkt ikke kan overses. */
+:root { --live-fill: #ffd23f; --live-ink: #141414; }
+.live-hl {
+  background: var(--live-fill) !important;
+  color: var(--live-ink) !important;
+  border: 4px solid var(--st-live) !important;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--st-live) 35%, transparent);
+}
+.live-hl .chip { --tc: var(--live-ink); }
+.live-hl .chip-optional { --tc: #4b1f8f; }
+.live-hl .muted, .live-hl .card-label, .live-hl .mon-label, .live-hl .mon-k,
+.live-hl .row-note, .live-hl .row-num, .live-hl .row-dur .elapsed, .live-hl .row-dur .actual { color: #3d3a2a !important; }
+.live-hl .overtime { color: #b00000 !important; }
+.live-hl .mon-times > div { background: rgba(0, 0, 0, 0.08); }
+.live-hl .mon-notes { background: rgba(255, 255, 255, 0.6); color: var(--live-ink); }
+.live-hl .mon-notes-label { color: #0b4fa8; }
+.live-hl .btn-finish { background: #fff; color: var(--live-ink); }
+.item-row.live-hl { border-left-width: 8px !important; }
+.mon-now.live-hl { border-width: 6px !important; }
+.stage-now.live-hl .stage-now-time { color: var(--live-ink); }

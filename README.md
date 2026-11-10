@@ -82,6 +82,7 @@ Kører du uden `FOH_PASSWORD`/`STAGE_PASSWORD`, bruges `admin` og `scene`, og se
 | Annulleret | ✕ | FOH tager punktet ud af programmet |
 
 Status vises altid med **ikon og tekst**, ikke kun farve.
+Det punkt, der **afvikles**, har **rød kant og gul baggrund** på alle skærme, så det ikke kan overses.
 
 ### Tid: Video tæller ned, Tale og Andet er ca.-tider
 

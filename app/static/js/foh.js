@@ -66,6 +66,7 @@
     var html = list.map(function (item, idx) {
       var cls = "item-row st-row-" + item.status + (item.id === selectedId ? " selected" : "") + (item.optional ? " is-optional" : "");
       if (item.status === "requested") cls += " attention";
+      if (item.status === "live") cls += " live-hl";
       return '<li class="' + cls + '" data-id="' + item.id + '" tabindex="0">' +
         '<span class="row-num">' + (idx + 1) + "</span>" +
         '<span class="row-main"><span class="row-title">' + esc(item.title) + "</span>" +
@@ -119,7 +120,7 @@
       el.innerHTML = '<div class="card-label">Afvikles nu</div><div class="now-empty">Intet punkt afvikles</div>';
       return;
     }
-    el.className = "card now-card live";
+    el.className = "card now-card live live-hl";
     var timing = L.isTimed(cur) && cur.duration_seconds
       ? '<span class="now-time">Tilbage ' + L.countdown(cur) + ' <span class="muted">af ' + L.fmtDur(cur.duration_seconds) + "</span></span>"
       : '<span class="muted">' + L.fmtItemDur(cur) + "</span>";

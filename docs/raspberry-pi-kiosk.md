@@ -102,6 +102,9 @@ Monitor-Pi'er kræver intet login.
   (▲ / ▼ eller *Forrige* / *Næste*) til at bladre. Man kan også trække listen op og ned med fingeren. Det virker
   også, når Pi'en sender tryk som musehændelser. Flaget `--touch-events=enabled` i kiosk-scriptet slår
   Chromiums egen touch-rulning til.
+- **Skærmen skjuler kanten:** Bliver noget skåret af i kanten, f.eks. *Log ud*, nedtællingen eller *Næste*,
+  så åbn én gang `/stage?kant=16` (antal pixels, 0–80). Scenen lægger så en ekstra margen hele vejen rundt.
+  Indstillingen gemmes i browseren på den enhed. `/stage?kant=0` fjerner den igen.
 - **Brug kiosk-mode:** Uden `--kiosk` tager Chromiums faneblade og adresselinje omkring en fjerdedel af en
   800 px høj skærm.
 - Afslut kiosk-mode med `Alt+F4` eller ved at logge ind via SSH og køre `pkill chromium`.
