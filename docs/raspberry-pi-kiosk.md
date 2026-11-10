@@ -92,8 +92,13 @@ Monitor-Pi'er kræver intet login.
 
 - **Tema:** Tryk på *Tema* på den enkelte skærm. Valget gemmes lokalt i browseren på den pågældende enhed.
 - **Forbindelsestab:** Skærmen viser en rød advarsel og genforbinder automatisk. Du skal ikke genindlæse siden.
-- **Officiel 7"-touchskærm (800×480):** Scenevisningen er designet til at fungere ned til denne opløsning.
-- **Skærmrotation:** Brug *Screen Configuration* i desktoppen eller `wlr-randr`.
+- **Skærmstørrelser:** Scenevisningen er testet på 800×480 og 1280×720 (liggende) samt 480×800 og
+  720×1280 (stående). På højkant står titlen over mærkerne, og på store skærme på højkant bliver tekst og
+  knapper større.
+- **Skærmrotation:** Brug *Screen Configuration* i desktoppen, eller f.eks.
+  `wlr-randr --output DSI-1 --transform 90` (se navnet på udgangen med `wlr-randr`).
+- **Brug kiosk-mode:** Uden `--kiosk` tager Chromiums faneblade og adresselinje omkring en fjerdedel af en
+  800 px høj skærm.
 - Afslut kiosk-mode med `Alt+F4` eller ved at logge ind via SSH og køre `pkill chromium`.
 
 ## 7. Serveren på en Raspberry Pi 5

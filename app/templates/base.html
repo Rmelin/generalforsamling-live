@@ -14,7 +14,7 @@
       document.documentElement.setAttribute("data-theme", t);
     })();
   </script>
-  <link rel="stylesheet" href="{{ url_for('static', path='css/app.css') }}?v=2">
+  <link rel="stylesheet" href="{{ url_for('static', path='css/app.css') }}?v=3">
 </head>
 <body class="page-{{ page }}">
   <div id="conn-banner" class="conn-banner" role="alert" hidden>
@@ -23,7 +23,7 @@
   </div>
   {% block body %}{% endblock %}
   <div id="toasts" class="toasts" aria-live="assertive"></div>
-  <script src="{{ url_for('static', path='js/common.js') }}?v=2"></script>
+  <script src="{{ url_for('static', path='js/common.js') }}?v=3"></script>
   {% block scripts %}{% endblock %}
 </body>
 </html>

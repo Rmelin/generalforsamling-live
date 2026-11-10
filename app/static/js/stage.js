@@ -33,8 +33,10 @@
       var sel = item.id === selectedId;
       return '<li role="option" aria-selected="' + sel + '" class="stage-item st-row-' + item.status + (sel ? " selected" : "") + (item.optional ? " is-optional" : "") + '" data-id="' + item.id + '">' +
         '<span class="stage-item-title">' + esc(item.title) + "</span>" +
-        '<span class="stage-item-meta">' + L.optChip(item, true) + L.typeChip(item.item_type) + '<span class="stage-dur">' + L.fmtItemDur(item) + "</span></span>" +
-        '<span class="stage-item-status">' + L.statusBadge(item.status) + "</span></li>";
+        '<span class="stage-item-meta">' + L.optChip(item, true) + L.typeChip(item.item_type) +
+        '<span class="stage-dur">' + L.fmtItemDur(item) + "</span>" +
+        // "Afventer" er standard og vises ikke – kun Ønsket/Klar fremhæves.
+        (item.status !== "pending" ? L.statusBadge(item.status) : "") + "</span></li>";
     }).join("") || '<li class="empty">Ingen punkter tilbage.</li>';
 
     var sel = selectedId != null ? L.byId(selectedId) : null;
@@ -42,11 +44,11 @@
     var offline = !L.connected;
     reqBtn.disabled = offline || !sel || sel.status !== "pending";
     undoBtn.disabled = offline || !sel || (sel.status !== "requested" && sel.status !== "ready");
-    reqBtn.textContent = sel && sel.status === "pending" ? "Anmod om klargøring: " + truncate(sel.title, 28) : "Anmod om klargøring";
+    reqBtn.innerHTML = '<span>Anmod om klargøring</span>' +
+      (sel && sel.status === "pending" ? '<span class="btn-sub">' + esc(sel.title) + "</span>" : "");
     L.tick();
   }
 
-  function truncate(s, n) { return s.length > n ? s.slice(0, n - 1) + "…" : s; }
 
   $("stage-list").addEventListener("click", function (e) {
     var row = e.target.closest(".stage-item");
