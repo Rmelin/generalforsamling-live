@@ -366,5 +366,28 @@
     }
   };
 
+  // ------------------------------------------------------------ fuldskærm
+
+  Live.toggleFullscreen = function () {
+    var el = document.documentElement;
+    if (document.fullscreenElement) document.exitFullscreen().catch(function () {});
+    else if (el.requestFullscreen) el.requestFullscreen().catch(function () {});
+  };
+
+  Live.initFullscreen = function () {
+    var btns = document.querySelectorAll("[data-fullscreen-toggle]");
+    function label() {
+      for (var i = 0; i < btns.length; i++) {
+        btns[i].textContent = document.fullscreenElement ? "Afslut fuldskærm" : "Fuldskærm";
+      }
+    }
+    for (var i = 0; i < btns.length; i++) {
+      if (!document.documentElement.requestFullscreen) { btns[i].hidden = true; continue; }
+      btns[i].addEventListener("click", Live.toggleFullscreen);
+    }
+    document.addEventListener("fullscreenchange", label);
+    label();
+  };
+
   window.Live = Live;
 })();

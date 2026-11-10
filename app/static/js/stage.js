@@ -74,6 +74,7 @@
   document.addEventListener("contextmenu", function (e) { e.preventDefault(); });
 
   L.initTheme();
+  L.initFullscreen();
   L.onState(render);
   L.start();
 })();

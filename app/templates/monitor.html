@@ -7,7 +7,7 @@
     <div class="monitor-meta"><span id="remaining"></span></div>
     <div class="monitor-tools">
       {% include "_topbar_tools.html" %}
-      <button type="button" class="btn btn-ghost btn-sm" id="btn-fullscreen">Fuldskærm</button>
+      <button type="button" class="btn btn-ghost btn-sm" data-fullscreen-toggle>Fuldskærm</button>
     </div>
   </header>
   <main class="monitor-grid">
@@ -20,4 +20,4 @@
   </main>
 </div>
 {% endblock %}
-{% block scripts %}<script src="{{ url_for('static', path='js/monitor.js') }}?v=3"></script>{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', path='js/monitor.js') }}?v=4"></script>{% endblock %}

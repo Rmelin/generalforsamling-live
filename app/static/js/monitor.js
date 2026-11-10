@@ -51,12 +51,8 @@
   }
 
   // Fuldskærm
-  $("btn-fullscreen").addEventListener("click", toggleFs);
-  document.addEventListener("keydown", function (e) { if (e.key === "f" || e.key === "F") toggleFs(); });
-  function toggleFs() {
-    if (document.fullscreenElement) document.exitFullscreen();
-    else if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(function () {});
-  }
+  Live.initFullscreen();
+  document.addEventListener("keydown", function (e) { if (e.key === "f" || e.key === "F") Live.toggleFullscreen(); });
 
   // Skjul markør og værktøjer efter inaktivitet.
   var idleTimer = null;
