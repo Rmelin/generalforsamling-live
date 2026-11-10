@@ -83,6 +83,22 @@ Kører du uden `FOH_PASSWORD`/`STAGE_PASSWORD`, bruges `admin` og `scene`, og se
 
 Status vises altid med **ikon og tekst**, ikke kun farve.
 
+### Tid: Video tæller ned, Tale og Andet er ca.-tider
+
+- **Video** har en fast længde. Når FOH trykker *Start*, tæller alle skærme ned (`1:32` tilbage).
+  Kører videoen over tid, vises `+0:05` i rødt.
+- **Tale** og **Andet** har kun en anslået tid og vises som `ca. 5 min`. Når de startes, står der kun
+  **Afvikles**, uden et ur, der kører.
+
+### Skal afvikles eller Mulighed
+
+Hvert punkt er enten **Skal** afvikles (standard) eller en **Mulighed**, der kan springes over, f.eks. hvis
+tiden tillader det. FOH vælger det ved oprettelse (fluebenet *Mulighed*) og i redigeringen.
+
+- På **scenen** har hvert punkt et mærke: **SKAL** (fuld kant) eller **MULIGHED** (stiplet kant og kursiv titel).
+  Øverst står, hvor mange af hver slags der er tilbage.
+- **FOH** og **monitoren** viser mærket *Mulighed* og en stiplet kant på valgfrie punkter.
+
 - FOH kan springe trin over, f.eks. starte et punkt direkte fra *Afventer*.
 - Kun ét punkt kan afvikles ad gangen. Starter FOH et nyt punkt, afsluttes det igangværende automatisk.
   FOH får en bekræftelsesdialog først.

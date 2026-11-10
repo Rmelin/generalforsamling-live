@@ -20,6 +20,7 @@
         {% for key, label in item_types.items() %}<option value="{{ key }}">{{ label }}</option>{% endfor %}
       </select>
       <input id="qa-duration" name="duration" placeholder="mm:ss" inputmode="numeric" aria-label="Varighed (mm:ss)" class="input-duration">
+      <label class="toggle qa-optional" title="Punktet er en mulighed og kan springes over"><input type="checkbox" id="qa-optional"> Mulighed</label>
       <button class="btn btn-primary" type="submit">Tilføj</button>
     </form>
 
@@ -49,4 +50,4 @@
   </section>
 </main>
 {% endblock %}
-{% block scripts %}<script src="{{ url_for('static', path='js/foh.js') }}?v=1"></script>{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', path='js/foh.js') }}?v=2"></script>{% endblock %}

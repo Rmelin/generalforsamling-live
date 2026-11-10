@@ -242,3 +242,38 @@ def test_restart_keeps_items_and_history(tmp_path):
         assert it["status"] == "live" and it["title"] == "Overlever genstart"
         actions = [e["action"] for e in c.get("/api/events").json()["events"]]
         assert "create" in actions and "start" in actions
+
+
+def test_optional_flag_create_and_update(foh, anon):
+    must = create(foh, "Skal afvikles")
+    maybe = create(foh, "Mulighed", optional=True)
+    assert must["optional"] is False and maybe["optional"] is True
+    r = foh.patch(f"/api/items/{must['id']}", json={"expected_version": 1, "optional": True})
+    assert r.status_code == 200 and r.json()["item"]["optional"] is True
+    assert item_in_state(anon, must["id"])["optional"] is True
+    edit = next(e for e in foh.get("/api/events").json()["events"] if e["action"] == "edit")
+    assert edit["details"] == "optional"
+
+
+def test_old_database_is_migrated(tmp_path):
+    """En database fra før 'optional'-feltet får kolonnen tilføjet ved opstart."""
+    db_path = tmp_path / "live.db"
+    con = sqlite3.connect(db_path)
+    con.execute(
+        "CREATE TABLE items (id INTEGER PRIMARY KEY, title VARCHAR(200), item_type VARCHAR(20), "
+        "description TEXT, technical_notes TEXT, duration_seconds INTEGER, status VARCHAR(20), "
+        "sort_order INTEGER, version INTEGER, deleted BOOLEAN, created_at DATETIME, updated_at DATETIME, "
+        "requested_at DATETIME, ready_at DATETIME, started_at DATETIME, ended_at DATETIME)"
+    )
+    con.execute(
+        "INSERT INTO items (title, item_type, description, technical_notes, duration_seconds, status, "
+        "sort_order, version, deleted, created_at, updated_at) VALUES "
+        "('Gammelt punkt', 'speech', '', '', 60, 'pending', 10, 1, 0, '2026-01-01', '2026-01-01')"
+    )
+    con.commit()
+    con.close()
+
+    app = create_app(make_settings(tmp_path))
+    with TestClient(app) as c:
+        items = c.get("/api/state").json()["items"]
+        assert items[0]["title"] == "Gammelt punkt" and items[0]["optional"] is False

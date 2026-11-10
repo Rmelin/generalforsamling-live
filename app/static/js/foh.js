@@ -21,9 +21,9 @@
     var btn = e.target.querySelector("button[type=submit]");
     L.run(btn, function () {
       return L.api("POST", "/api/items", {
-        title: title, item_type: $("qa-type").value, duration_seconds: dur
+        title: title, item_type: $("qa-type").value, duration_seconds: dur, optional: $("qa-optional").checked
       }).then(function (res) {
-        $("qa-title").value = ""; $("qa-duration").value = "";
+        $("qa-title").value = ""; $("qa-duration").value = ""; $("qa-optional").checked = false;
         $("qa-title").focus();
         return res;
       });
@@ -51,9 +51,7 @@
   }
 
   function rowActual(item) {
-    if (item.status === "live" && item.started_at) {
-      return '<span class="elapsed" data-elapsed-from="' + esc(item.started_at) + '" data-expected="' + item.duration_seconds + '"></span>';
-    }
+    if (item.status === "live") return L.countdown(item, "elapsed");
     var el = L.elapsed(item);
     if (el != null && item.ended_at) {
       var over = item.duration_seconds && el > item.duration_seconds ? " overtime" : "";
@@ -66,16 +64,16 @@
     var list = L.active();
     $("active-count").textContent = "(" + list.length + " aktive)";
     var html = list.map(function (item, idx) {
-      var cls = "item-row st-row-" + item.status + (item.id === selectedId ? " selected" : "");
+      var cls = "item-row st-row-" + item.status + (item.id === selectedId ? " selected" : "") + (item.optional ? " is-optional" : "");
       if (item.status === "requested") cls += " attention";
       return '<li class="' + cls + '" data-id="' + item.id + '" tabindex="0">' +
         '<span class="row-num">' + (idx + 1) + "</span>" +
         '<span class="row-main"><span class="row-title">' + esc(item.title) + "</span>" +
-        '<span class="row-meta">' + L.typeChip(item.item_type) +
+        '<span class="row-meta">' + L.typeChip(item.item_type) + L.optChip(item) +
         (item.technical_notes ? '<span class="row-note" title="' + esc(item.technical_notes) + '">✎ ' + esc(item.technical_notes) + "</span>" : "") +
         "</span></span>" +
         '<span class="row-status">' + L.statusBadge(item.status) + "</span>" +
-        '<span class="row-dur"><span title="Forventet">' + L.fmtDur(item.duration_seconds) + "</span>" + rowActual(item) + "</span>" +
+        '<span class="row-dur"><span title="Forventet">' + L.fmtItemDur(item) + "</span>" + rowActual(item) + "</span>" +
         '<span class="row-move">' +
         '<button type="button" class="btn btn-icon" data-move="up" aria-label="Flyt op"' + (idx === 0 ? " disabled" : "") + ">▲</button>" +
         '<button type="button" class="btn btn-icon" data-move="down" aria-label="Flyt ned"' + (idx === list.length - 1 ? " disabled" : "") + ">▼</button>" +
@@ -93,7 +91,7 @@
         '<span class="row-num">' + L.fmtClock(item.ended_at || item.updated_at) + "</span>" +
         '<span class="row-main"><span class="row-title">' + esc(item.title) + '</span><span class="row-meta">' + L.typeChip(item.item_type) + "</span></span>" +
         '<span class="row-status">' + L.statusBadge(item.status) + "</span>" +
-        '<span class="row-dur"><span title="Forventet">' + L.fmtDur(item.duration_seconds) + "</span>" + rowActual(item) + "</span>" +
+        '<span class="row-dur"><span title="Forventet">' + L.fmtItemDur(item) + "</span>" + rowActual(item) + "</span>" +
         '<span class="row-move"><button type="button" class="btn btn-sm" data-reopen="1">Genåbn</button></span></li>';
     }).join("") || '<li class="empty">Ingen afsluttede punkter endnu.</li>';
   }
@@ -107,7 +105,7 @@
     box.hidden = false;
     box.innerHTML = reqs.map(function (r) {
       return '<div class="request-alert-row"><span class="badge-icon" aria-hidden="true">⚑</span>' +
-        "<span><strong>Scenen ønsker klargjort:</strong> " + esc(r.title) + " " + L.typeChip(r.item_type) + "</span>" +
+        "<span><strong>Scenen ønsker klargjort:</strong> " + esc(r.title) + " " + L.typeChip(r.item_type) + " " + L.optChip(r) + "</span>" +
         '<button type="button" class="btn btn-ready" data-act="ready" data-id="' + r.id + '">✓ Markér klar</button></div>';
     }).join("");
     if (fresh) { box.classList.remove("flash"); void box.offsetWidth; box.classList.add("flash"); }
@@ -122,11 +120,13 @@
       return;
     }
     el.className = "card now-card live";
+    var timing = L.isTimed(cur) && cur.duration_seconds
+      ? '<span class="now-time">Tilbage ' + L.countdown(cur) + ' <span class="muted">af ' + L.fmtDur(cur.duration_seconds) + "</span></span>"
+      : '<span class="muted">' + L.fmtItemDur(cur) + "</span>";
     el.innerHTML = '<div class="card-label">Afvikles nu ' + L.statusBadge("live") + "</div>" +
       '<div class="now-title">' + esc(cur.title) + "</div>" +
-      '<div class="now-meta">' + L.typeChip(cur.item_type) +
-      "<span>Start " + L.fmtClockSec(cur.started_at) + "</span>" +
-      '<span class="now-time"><span data-elapsed-from="' + esc(cur.started_at) + '" data-expected="' + cur.duration_seconds + '"></span> / ' + L.fmtDur(cur.duration_seconds) + "</span></div>" +
+      '<div class="now-meta">' + L.typeChip(cur.item_type) + L.optChip(cur) +
+      "<span>Start " + L.fmtClockSec(cur.started_at) + "</span>" + timing + "</div>" +
       '<div class="card-actions"><button type="button" class="btn btn-lg btn-finish" data-act="finish" data-id="' + cur.id + '">■ Afslut</button></div>';
   }
 
@@ -140,7 +140,7 @@
     el.innerHTML = '<div class="card-label">Næste (ønsket af scenen)</div>' + chosen.map(function (n) {
       return '<div class="next-row st-row-' + n.status + '">' +
         '<div class="next-info"><div class="next-title">' + esc(n.title) + "</div>" +
-        '<div class="now-meta">' + L.typeChip(n.item_type) + L.statusBadge(n.status) + "<span>" + L.fmtDur(n.duration_seconds) + "</span></div>" +
+        '<div class="now-meta">' + L.typeChip(n.item_type) + L.optChip(n) + L.statusBadge(n.status) + "<span>" + L.fmtItemDur(n) + "</span></div>" +
         (n.technical_notes ? '<div class="note">' + esc(n.technical_notes) + "</div>" : "") + "</div>" +
         '<div class="card-actions">' +
         (n.status === "requested" ? '<button type="button" class="btn btn-ready" data-act="ready" data-id="' + n.id + '">✓ Klar</button>' : "") +
@@ -178,14 +178,17 @@
       '<form id="ed-form" class="editor-form" autocomplete="off">' +
       '<label class="span2">Titel<input name="title" maxlength="200" required value="' + esc(item.title) + '"></label>' +
       "<label>Type<select name=\"item_type\">" + typeOpts + "</select></label>" +
-      '<label>Varighed (mm:ss)<input name="duration" class="input-duration" value="' + L.fmtDur(item.duration_seconds) + '"></label>' +
+      '<label>Varighed (mm:ss) <small class="muted">– tælles kun ned for video</small><input name="duration" class="input-duration" value="' + L.fmtDur(item.duration_seconds) + '"></label>' +
+      '<fieldset class="span2 opt-field"><legend>Afvikling</legend>' +
+      '<label class="radio"><input type="radio" name="optional" value="0"' + (item.optional ? "" : " checked") + '> <span class="chip chip-required">Skal</span> Skal afvikles</label>' +
+      '<label class="radio"><input type="radio" name="optional" value="1"' + (item.optional ? " checked" : "") + '> <span class="chip chip-optional">Mulighed</span> Kan springes over</label></fieldset>' +
       '<label class="span2">Beskrivelse<textarea name="description" rows="2" maxlength="5000">' + esc(item.description) + "</textarea></label>" +
       '<label class="span2">Tekniske noter <small class="muted">(vises på teknikermonitoren)</small><textarea name="technical_notes" rows="2" maxlength="5000">' + esc(item.technical_notes) + "</textarea></label>" +
       '<div class="editor-times span2 muted">' +
       "Oprettet " + L.fmtClock(item.created_at) +
       (item.started_at ? " · Start " + L.fmtClockSec(item.started_at) : "") +
       (item.ended_at ? " · Slut " + L.fmtClockSec(item.ended_at) : "") +
-      " · Forventet " + L.fmtDur(item.duration_seconds) +
+      " · Forventet " + L.fmtItemDur(item) +
       (actual != null && item.ended_at ? " · Faktisk " + L.fmtDur(actual) : "") + "</div>" +
       '<div class="editor-save span2"><button type="submit" class="btn btn-primary" id="ed-save" disabled>Gem ændringer</button>' +
       '<button type="button" class="btn btn-ghost" id="ed-delete">Slet</button></div>' +
@@ -204,7 +207,8 @@
         item_type: form.item_type.value,
         duration_seconds: dur,
         description: form.description.value,
-        technical_notes: form.technical_notes.value
+        technical_notes: form.technical_notes.value,
+        optional: form.querySelector("[name=optional]:checked").value === "1"
       };
       L.run($("ed-save"), function () {
         return L.api("PATCH", "/api/items/" + editor.id, payload).then(function (res) {

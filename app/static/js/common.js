@@ -72,6 +72,29 @@
     return '<span class="chip type-' + esc(t) + '">' + esc(TYPES[t] || t) + "</span>";
   }
 
+  // Kun video har en fast længde, der tælles ned. Tale og Andet er ca.-tider.
+  function isTimed(item) { return item && item.item_type === "video"; }
+
+  function fmtItemDur(item) {
+    var sec = item.duration_seconds;
+    if (!sec) return "–";
+    if (isTimed(item)) return fmtDur(sec);
+    return sec < 60 ? "ca. " + fmtDur(sec) : "ca. " + Math.round(sec / 60) + " min";
+  }
+
+  // Nedtælling for et punkt, der afvikles. Tom for Tale/Andet.
+  function countdown(item, cls) {
+    if (!isTimed(item) || !item.started_at || !item.duration_seconds) return "";
+    return '<span class="countdown ' + (cls || "") + '" data-countdown-from="' + esc(item.started_at) +
+      '" data-duration="' + item.duration_seconds + '"></span>';
+  }
+
+  // "Mulighed" for valgfrie punkter; "Skal" for obligatoriske, hvis showRequired.
+  function optChip(item, showRequired) {
+    if (item.optional) return '<span class="chip chip-optional" title="Kan springes over">Mulighed</span>';
+    return showRequired ? '<span class="chip chip-required" title="Skal afvikles">Skal</span>' : "";
+  }
+
   // ------------------------------------------------------------ tilstand
 
   var listeners = [];
@@ -79,6 +102,7 @@
     STATUS: STATUS, TYPES: TYPES,
     esc: esc, fmtDur: fmtDur, parseDur: parseDur, fmtClock: fmtClock, fmtClockSec: fmtClockSec,
     statusBadge: statusBadge, typeChip: typeChip, parseIso: parseIso,
+    isTimed: isTimed, fmtItemDur: fmtItemDur, countdown: countdown, optChip: optChip,
     items: [], revision: -1, dbId: null, offset: 0, connected: false, hasState: false,
 
     onState: function (fn) { listeners.push(fn); if (this.hasState) fn(this); },
@@ -296,8 +320,17 @@
   };
 
   Live.tick = function () {
-    var els = document.querySelectorAll("[data-elapsed-from]");
     var now = Live.now();
+    // Nedtælling (kun video): resterende tid, derefter "+m:ss" i rødt.
+    var cds = document.querySelectorAll("[data-countdown-from]");
+    for (var j = 0; j < cds.length; j++) {
+      var start = parseIso(cds[j].getAttribute("data-countdown-from"));
+      var dur = parseInt(cds[j].getAttribute("data-duration") || "0", 10);
+      var left = dur - Math.max(0, (now - start) / 1000);
+      cds[j].textContent = left >= 0 ? fmtDur(Math.ceil(left)) : "+" + fmtDur(-left);
+      cds[j].classList.toggle("overtime", left < 0);
+    }
+    var els = document.querySelectorAll("[data-elapsed-from]");
     for (var i = 0; i < els.length; i++) {
       var from = parseIso(els[i].getAttribute("data-elapsed-from"));
       var secs = Math.max(0, (now - from) / 1000);

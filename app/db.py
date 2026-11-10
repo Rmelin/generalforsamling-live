@@ -57,6 +57,21 @@ class Database:
         from . import models  # noqa: F401  (registrerer tabeller)
 
         Base.metadata.create_all(self.engine)
+        self._migrate()
+
+    # Kolonner tilføjet efter første version: (tabel, kolonne, SQL-definition)
+    _ADDED_COLUMNS = [
+        ("items", "optional", "BOOLEAN NOT NULL DEFAULT 0"),
+    ]
+
+    def _migrate(self) -> None:
+        """Simpel migrering: tilføj manglende kolonner i eksisterende databaser."""
+        with self.write() as s:
+            conn = s.connection()
+            for table, column, ddl in self._ADDED_COLUMNS:
+                cols = {row[1] for row in conn.exec_driver_sql(f"PRAGMA table_info({table})")}
+                if column not in cols:
+                    conn.exec_driver_sql(f"ALTER TABLE {table} ADD COLUMN {column} {ddl}")
 
     @contextmanager
     def read(self) -> Iterator[Session]:

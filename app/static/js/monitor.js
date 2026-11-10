@@ -20,27 +20,31 @@
     $("mon-now").className = "mon-card mon-now" + (cur ? " live" : "");
     $("mon-now").innerHTML = '<h2 class="mon-label">Nu</h2>' + (cur
       ? '<div class="mon-now-title">' + esc(cur.title) + "</div>" +
-        '<div class="mon-row">' + L.typeChip(cur.item_type) + L.statusBadge("live", { big: true }) + "</div>" +
-        '<div class="mon-times">' +
-        '<div><span class="mon-k">Start</span><span class="mon-v">' + L.fmtClock(cur.started_at) + "</span></div>" +
-        '<div><span class="mon-k">Forløbet</span><span class="mon-v mon-elapsed" data-elapsed-from="' + esc(cur.started_at) + '" data-expected="' + cur.duration_seconds + '"></span></div>' +
-        '<div><span class="mon-k">Forventet</span><span class="mon-v">' + L.fmtDur(cur.duration_seconds) + "</span></div></div>" +
+        '<div class="mon-row">' + L.typeChip(cur.item_type) + L.optChip(cur) + L.statusBadge("live", { big: true }) + "</div>" +
+        (L.isTimed(cur) && cur.duration_seconds
+          ? '<div class="mon-times">' +
+            '<div><span class="mon-k">Start</span><span class="mon-v">' + L.fmtClock(cur.started_at) + "</span></div>" +
+            '<div><span class="mon-k">Tilbage</span><span class="mon-v">' + L.countdown(cur) + "</span></div>" +
+            '<div><span class="mon-k">Længde</span><span class="mon-v">' + L.fmtDur(cur.duration_seconds) + "</span></div></div>"
+          : '<div class="mon-times mon-times-2">' +
+            '<div><span class="mon-k">Start</span><span class="mon-v">' + L.fmtClock(cur.started_at) + "</span></div>" +
+            '<div><span class="mon-k">Forventet</span><span class="mon-v">' + L.fmtItemDur(cur) + "</span></div></div>") +
         notes(cur)
       : '<div class="mon-empty">Intet indslag i gang</div>');
 
     $("mon-next").className = "mon-card mon-next" + (next ? " st-row-" + next.status : "");
     $("mon-next").innerHTML = '<h2 class="mon-label">Næste' + (next && !nextChosen ? ' <small>(i programmet – ikke valgt af scenen)</small>' : "") + "</h2>" + (next
       ? '<div class="mon-next-title">' + esc(next.title) + "</div>" +
-        '<div class="mon-row">' + L.typeChip(next.item_type) + L.statusBadge(next.status, { big: true }) +
-        '<span class="mon-dur">' + L.fmtDur(next.duration_seconds) + "</span></div>" + notes(next)
+        '<div class="mon-row">' + L.typeChip(next.item_type) + L.optChip(next, true) + L.statusBadge(next.status, { big: true }) +
+        '<span class="mon-dur">' + L.fmtItemDur(next) + "</span></div>" + notes(next)
       : '<div class="mon-empty">Intet næste indslag</div>');
 
     $("mon-list").innerHTML = queue.filter(function (i) { return !next || i.id !== next.id; }).map(function (item) {
       var hl = item.status === "requested" || item.status === "ready";
-      return '<li class="mon-item st-row-' + item.status + (hl ? " highlight" : "") + '">' +
+      return '<li class="mon-item st-row-' + item.status + (hl ? " highlight" : "") + (item.optional ? " is-optional" : "") + '">' +
         '<span class="mon-item-title">' + esc(item.title) + "</span>" +
-        '<span class="mon-item-meta">' + L.typeChip(item.item_type) + L.statusBadge(item.status) +
-        '<span class="mon-dur">' + L.fmtDur(item.duration_seconds) + "</span></span>" +
+        '<span class="mon-item-meta">' + L.optChip(item) + L.typeChip(item.item_type) + L.statusBadge(item.status) +
+        '<span class="mon-dur">' + L.fmtItemDur(item) + "</span></span>" +
         (item.technical_notes ? '<span class="mon-item-notes">' + esc(item.technical_notes) + "</span>" : "") + "</li>";
     }).join("") || '<li class="empty">Ingen yderligere punkter</li>';
     L.tick();

@@ -25,6 +25,8 @@ class Item(Base):
     description: Mapped[str] = mapped_column(Text, default="")
     technical_notes: Mapped[str] = mapped_column(Text, default="")
     duration_seconds: Mapped[int] = mapped_column(Integer, default=0)
+    # False = skal afvikles, True = en mulighed (kan springes over)
+    optional: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0")
     status: Mapped[str] = mapped_column(String(20), default="pending", index=True)
     sort_order: Mapped[int] = mapped_column(Integer, default=0, index=True)
     version: Mapped[int] = mapped_column(Integer, default=1)

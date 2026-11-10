@@ -10,7 +10,7 @@
     $("stage-now").innerHTML = cur
       ? '<div class="stage-now-label">' + L.statusBadge("live") + "</div>" +
         '<div class="stage-now-title">' + esc(cur.title) + "</div>" +
-        '<div class="stage-now-time"><span data-elapsed-from="' + esc(cur.started_at) + '" data-expected="' + cur.duration_seconds + '"></span> / ' + L.fmtDur(cur.duration_seconds) + "</div>"
+        (L.isTimed(cur) && cur.duration_seconds ? '<div class="stage-now-time">' + L.countdown(cur) + "</div>" : "")
       : '<div class="stage-now-label muted">Intet i gang</div>';
 
     var chosen = L.chosen();
@@ -18,18 +18,22 @@
       ? chosen.map(function (c) {
           var msg = c.status === "ready" ? "FOH: KLAR" : "Venter på FOH …";
           return '<div class="stage-status-row st-row-' + c.status + '">' + L.statusBadge(c.status, { big: true }) +
-            '<span class="stage-status-title">' + esc(c.title) + '</span><span class="stage-status-msg">' + msg + "</span></div>";
+            '<span class="stage-status-title">' + esc(c.title) + " " + L.optChip(c) + '</span><span class="stage-status-msg">' + msg + "</span></div>";
         }).join("")
       : '<div class="stage-status-row muted">Intet punkt ønsket klargjort. Vælg et punkt nedenfor.</div>';
 
     var list = L.queue();
+    var nReq = list.filter(function (i) { return !i.optional; }).length;
+    var nOpt = list.length - nReq;
+    $("stage-summary").innerHTML = '<span class="chip chip-required">Skal</span> ' + nReq + " tilbage" +
+      (nOpt ? ' &nbsp; <span class="chip chip-optional">Mulighed</span> ' + nOpt + " tilbage" : "");
     if (selectedId != null && !list.some(function (i) { return i.id === selectedId; })) selectedId = null;
 
     $("stage-list").innerHTML = list.map(function (item) {
       var sel = item.id === selectedId;
-      return '<li role="option" aria-selected="' + sel + '" class="stage-item st-row-' + item.status + (sel ? " selected" : "") + '" data-id="' + item.id + '">' +
+      return '<li role="option" aria-selected="' + sel + '" class="stage-item st-row-' + item.status + (sel ? " selected" : "") + (item.optional ? " is-optional" : "") + '" data-id="' + item.id + '">' +
         '<span class="stage-item-title">' + esc(item.title) + "</span>" +
-        '<span class="stage-item-meta">' + L.typeChip(item.item_type) + '<span class="stage-dur">' + L.fmtDur(item.duration_seconds) + "</span></span>" +
+        '<span class="stage-item-meta">' + L.optChip(item, true) + L.typeChip(item.item_type) + '<span class="stage-dur">' + L.fmtItemDur(item) + "</span></span>" +
         '<span class="stage-item-status">' + L.statusBadge(item.status) + "</span></li>";
     }).join("") || '<li class="empty">Ingen punkter tilbage.</li>';
 
