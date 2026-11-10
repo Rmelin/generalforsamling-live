@@ -29,6 +29,7 @@ ITEM_TYPES = {"speech": "Tale", "video": "Video", "other": "Andet"}
 
 ROLE_FOH = "foh"
 ROLE_STAGE = "stage"
+ROLE_DEVICE = "device"  # fysisk FOH-betjening, f.eks. Pimoroni Presto
 
 # handling -> (målstatus, {rolle: tilladte fra-statusser})
 ACTIONS: dict[str, tuple[str, dict[str, frozenset[str]]]] = {
@@ -43,10 +44,13 @@ ACTIONS: dict[str, tuple[str, dict[str, frozenset[str]]]] = {
             ROLE_FOH: frozenset({REQUESTED, READY}),
         },
     ),
-    "ready": (READY, {ROLE_FOH: frozenset({PENDING, REQUESTED})}),
-    "start": (LIVE, {ROLE_FOH: frozenset({PENDING, REQUESTED, READY})}),
-    "finish": (DONE, {ROLE_FOH: frozenset({LIVE})}),
-    "cancel": (CANCELLED, {ROLE_FOH: frozenset({PENDING, REQUESTED, READY, LIVE})}),
+    "ready": (READY, {ROLE_FOH: frozenset({PENDING, REQUESTED}),
+                      ROLE_DEVICE: frozenset({PENDING, REQUESTED})}),
+    "start": (LIVE, {ROLE_FOH: frozenset({PENDING, REQUESTED, READY}),
+                     ROLE_DEVICE: frozenset({PENDING, REQUESTED, READY})}),
+    "finish": (DONE, {ROLE_FOH: frozenset({LIVE}), ROLE_DEVICE: frozenset({LIVE})}),
+    "cancel": (CANCELLED, {ROLE_FOH: frozenset({PENDING, REQUESTED, READY, LIVE}),
+                           ROLE_DEVICE: frozenset({PENDING, REQUESTED, READY, LIVE})}),
     "reopen": (PENDING, {ROLE_FOH: frozenset({DONE, CANCELLED})}),
 }
 

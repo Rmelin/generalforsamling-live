@@ -118,7 +118,9 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
         return RedirectResponse(f"/login?next={next_url}", status_code=303)
 
     foh_only = require_actor(st.ROLE_FOH)
-    foh_or_stage = require_actor(st.ROLE_FOH, st.ROLE_STAGE)
+    foh_or_stage = require_actor(st.ROLE_FOH, st.ROLE_STAGE, st.ROLE_DEVICE,
+                                 device_token=settings.device_token)
+    foh_or_device = require_actor(st.ROLE_FOH, st.ROLE_DEVICE, device_token=settings.device_token)
     write_guard = [Depends(require_client_header)]
 
     # ------------------------------------------------------------ sider
@@ -193,6 +195,11 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
         actor = session_actor(request)
         return {"role": actor.role if actor else "monitor",
                 "username": actor.username if actor else None}
+
+    @app.get("/api/device/state")
+    async def get_device_state(_actor: Actor = Depends(foh_or_device)):
+        """Kompakt tilstand til Presto og andre små enheder."""
+        return await run_in_threadpool(services.device_state, db)
 
     @app.get("/api/events")
     async def get_events(limit: int = 300, _actor: Actor = Depends(foh_only)):

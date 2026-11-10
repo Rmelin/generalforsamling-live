@@ -24,6 +24,7 @@ class Settings:
     seed_demo_data: bool = False
     session_max_age: int = 60 * 60 * 24 * 7
     event_name: str = "Generalforsamling Live"
+    device_token: str = ""  # tom = ingen enheder (Presto) har adgang
     ping_interval: float = 10.0
     warnings: list[str] = field(default_factory=list)
 
@@ -62,7 +63,10 @@ def load_settings() -> Settings:
         seed_demo_data=_bool(env.get("SEED_DEMO_DATA"), False),
         session_max_age=int(env.get("SESSION_MAX_AGE", str(60 * 60 * 24 * 7))),
         event_name=env.get("EVENT_NAME", "Generalforsamling Live") or "Generalforsamling Live",
+        device_token=env.get("DEVICE_TOKEN", "").strip(),
     )
+    if s.device_token and len(s.device_token) < 16:
+        s.warnings.append("DEVICE_TOKEN er kortere end 16 tegn – brug en længere, tilfældig værdi.")
     if not s.foh_password:
         s.foh_password = "admin"
         s.warnings.append("FOH_PASSWORD er ikke sat – bruger standardadgangskoden 'admin'.")

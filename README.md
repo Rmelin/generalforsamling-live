@@ -169,7 +169,8 @@ Skrivekald kræver login og headeren `X-Live-Client: 1` (simpel CSRF-beskyttelse
 | PATCH | `/api/items/{id}` | FOH (kræver `expected_version`) |
 | DELETE | `/api/items/{id}` | FOH (blød sletning) |
 | POST | `/api/items/{id}/move` | FOH (`{"direction": "up"|"down"}`) |
-| POST | `/api/items/{id}/actions/{action}` | FOH / Scene (`request`, `withdraw`, `ready`, `start`, `finish`, `cancel`, `reopen`) |
+| POST | `/api/items/{id}/actions/{action}` | FOH / Scene / enhed (`request`, `withdraw`, `ready`, `start`, `finish`, `cancel`, `reopen`) |
+| GET | `/api/device/state` | FOH / enhed (kompakt tilstand til Presto) |
 | WS | `/ws` | alle (kun læsning) |
 
 ## Tests
@@ -182,6 +183,15 @@ Skrivekald kræver login og headeren `X-Live-Client: 1` (simpel CSRF-beskyttelse
 Testene dækker statusovergange, rettigheder pr. rolle (monitoren kan intet ændre), WebSocket-udsendelse til
 flere klienter, ny klient og genforbindelse midt i afviklingen, samtidige og forældede ændringer,
 idempotens, hashede adgangskoder samt genstart uden datatab.
+
+## Fysisk FOH-betjening: Pimoroni Presto
+
+En Pimoroni Presto (4" touchskærm med WiFi) kan bruges som ekstra FOH-betjening ved siden af `/foh`.
+Den viser **Nu** (med nedtælling for video) og **Næste**, og har store knapper til **KLAR**, **START**,
+**ANNULLER** og **AFSLUT**. Den blinker gult ved nye anmodninger fra scenen.
+
+Den logger ind med `DEVICE_TOKEN` fra `.env` og må kun markere klar, starte, afslutte og annullere.
+Den kan ikke oprette, redigere eller slette punkter. Se [presto/README.md](presto/README.md).
 
 ## Raspberry Pi
 

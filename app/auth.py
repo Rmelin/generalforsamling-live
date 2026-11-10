@@ -15,7 +15,7 @@ from .config import Settings
 from .db import Database
 from .models import User
 from .services import Actor
-from .state import ROLE_FOH, ROLE_STAGE
+from .state import ROLE_DEVICE, ROLE_FOH, ROLE_STAGE
 
 PBKDF2_ITERATIONS = 240_000
 STAGE_USERNAME = "scene"
@@ -92,11 +92,31 @@ def can_view(actor: Optional[Actor], page: str) -> bool:
     return True
 
 
-def require_actor(*roles: str):
-    """FastAPI-dependency: kræver login med en af de angivne roller."""
+DEVICE_USERNAME = "presto"
+
+
+def device_actor(request: Request, device_token: str) -> Optional[Actor]:
+    """Enheder (Presto) logger ind med  Authorization: Bearer <DEVICE_TOKEN>."""
+    if not device_token:
+        return None
+    header = request.headers.get("authorization", "")
+    if not header.lower().startswith("bearer "):
+        return None
+    if hmac.compare_digest(header[7:].strip().encode(), device_token.encode()):
+        return Actor(role=ROLE_DEVICE, username=DEVICE_USERNAME)
+    return None
+
+
+def require_actor(*roles: str, device_token: str = ""):
+    """FastAPI-dependency: kræver login med en af de angivne roller.
+
+    Er ROLE_DEVICE blandt rollerne, accepteres også en gyldig enhedsnøgle.
+    """
 
     def dependency(request: Request) -> Actor:
         actor = session_actor(request)
+        if actor is None and ROLE_DEVICE in roles:
+            actor = device_actor(request, device_token)
         if actor is None:
             raise HTTPException(status_code=401, detail="Du er ikke logget ind.")
         if actor.role not in roles:

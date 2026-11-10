@@ -170,6 +170,54 @@ def snapshot(db: Database) -> dict[str, Any]:
         }
 
 
+def device_state(db: Database) -> dict[str, Any]:
+    """Lille, færdigberegnet tilstand til enheder med begrænset hukommelse.
+
+    Tider sendes som sekunder (enheden har ikke nødvendigvis et korrekt ur).
+    """
+    snap = snapshot(db)
+    items = snap["items"]
+    now = utcnow()
+
+    def secs_since(iso_str: Optional[str]) -> Optional[int]:
+        if not iso_str:
+            return None
+        started = datetime.fromisoformat(iso_str.rstrip("Z"))
+        return max(0, int((now - started).total_seconds()))
+
+    def compact(it: Optional[dict[str, Any]]) -> Optional[dict[str, Any]]:
+        if not it:
+            return None
+        out = {
+            "id": it["id"], "title": it["title"], "item_type": it["item_type"],
+            "status": it["status"], "optional": it["optional"],
+            "duration_seconds": it["duration_seconds"],
+            "timed": it["item_type"] == "video" and it["duration_seconds"] > 0,
+        }
+        if it["status"] == st.LIVE:
+            elapsed = secs_since(it["started_at"]) or 0
+            out["elapsed_seconds"] = elapsed
+            if out["timed"]:
+                out["remaining_seconds"] = it["duration_seconds"] - elapsed
+        return out
+
+    current = next((i for i in items if i["status"] == st.LIVE), None)
+    chosen = sorted(
+        (i for i in items if i["status"] in (st.REQUESTED, st.READY)),
+        key=lambda i: (i["requested_at"] or "", i["sort_order"]),
+    )
+    queue = [i for i in items if i["status"] in (st.PENDING, st.REQUESTED, st.READY)]
+    nxt = chosen[0] if chosen else (queue[0] if queue else None)
+    return {
+        "revision": snap["revision"],
+        "current": compact(current),
+        "next": compact(nxt),
+        "next_chosen": bool(chosen),
+        "requests": sum(1 for i in items if i["status"] == st.REQUESTED),
+        "remaining": len(queue),
+    }
+
+
 def list_events(db: Database, limit: int = 300) -> list[dict[str, Any]]:
     with db.read() as s:
         events = s.scalars(select(Event).order_by(Event.id.desc()).limit(limit)).all()
