@@ -83,33 +83,48 @@ STATUS_TAG = {
 
 # ---------------------------------------------------------------- fejl
 
-# MicroPython/lwIP fejlkoder -> forklaring på skærmen
+# Fejlkoder -> forklaring på skærmen. Slås op via navn, da numrene varierer.
+_ERRNO_TEXT = (
+    ("ECONNREFUSED", "Afvist - koerer serveren paa den port?"),
+    ("ETIMEDOUT", "Timeout - forkert IP, eller firewall?"),
+    ("EHOSTUNREACH", "Ingen rute til serveren - forkert net?"),
+    ("ECONNRESET", "Serveren lukkede forbindelsen"),
+    ("ECONNABORTED", "Forbindelsen blev afbrudt"),
+)
 _ERRNO = {
     -2: "Kan ikke slaa serveradressen op (forkert navn?)",
     -3: "Kan ikke slaa serveradressen op (forkert navn?)",
-    103: "Forbindelsen blev afbrudt",
-    104: "Serveren lukkede forbindelsen",
     110: "Timeout - forkert IP, eller firewall?",
-    111: "Afvist - kører serveren paa den port?",
+    111: "Afvist - koerer serveren paa den port?",
     113: "Ingen rute til serveren - forkert net?",
     116: "Timeout - forkert IP, eller firewall?",
 }
+try:
+    import errno as _errno_mod
+
+    for _name, _txt in _ERRNO_TEXT:
+        _code = getattr(_errno_mod, _name, None)
+        if _code is not None:
+            _ERRNO[_code] = _txt
+except ImportError:
+    pass
 
 
 class HttpError(Exception):
-    def __init__(self, status):
-        Exception.__init__(self, "HTTP %d" % status)
-        self.status = status
+    # Ingen egen __init__: MicroPython understøtter ikke Exception.__init__(self, ...).
+    # Statuskoden ligger i args[0].
+    pass
 
 
 def explain_error(exc):
     """Kort, forståelig forklaring på en fejl ved kald til serveren."""
     if isinstance(exc, HttpError):
-        if exc.status == 401:
+        status = exc.args[0] if exc.args else 0
+        if status == 401:
             return "Noegle afvist (401): DEVICE_TOKEN passer ikke, eller er ikke sat paa serveren"
-        if exc.status == 404:
+        if status == 404:
             return "Ukendt adresse (404): er serveren opdateret?"
-        return "Serveren svarede %d" % exc.status
+        return "Serveren svarede %d" % status
     code = None
     args = getattr(exc, "args", ())
     if args and isinstance(args[0], int):
