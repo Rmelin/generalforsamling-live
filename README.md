@@ -117,6 +117,35 @@ tiden tillader det. FOH vælger det ved oprettelse (fluebenet *Mulighed*) og i r
   scenen)* (*Klar* / *Start*) og redigering af det valgte punkt, inkl. **tekniske noter** til teknikerne.
 - **Historik** (kryds af øverst) viser hændelsesloggen: tid, punkt, handling, status før og efter, og hvem.
 
+### Import og eksport (CSV)
+
+I FOH under **Import / eksport (CSV)**:
+
+- **Eksportér program** henter hele programmet som CSV-fil (`program-ÅÅÅÅ-MM-DD_TTMM.csv`) med titel,
+  type, varighed, Skal/Mulighed, beskrivelse, tekniske noter, status samt faktisk start, slut og varighed.
+  Filen bruger semikolon og UTF-8, så den åbner direkte i dansk Excel. Den kan bruges som log efter
+  arrangementet.
+- **Hent skabelon** henter en tom skabelon med eksempler.
+- **Importér** læser en CSV-fil:
+  - *Tilføj til programmet* lægger punkterne sidst i listen.
+  - *Erstat programmet* fjerner først alle punkter, der hverken afvikles eller er afsluttet. Det punkt,
+    der afvikles nu, og historikken bevares.
+
+| Kolonne | Værdier | Påkrævet |
+|---|---|---|
+| `titel` | tekst | ja |
+| `type` | Tale, Video, Andet (tom = Tale) | nej |
+| `varighed` | `5:00`, `1:05:00`, `5` (= 5 min), `90s` | nej |
+| `afvikling` | Skal eller Mulighed (tom = Skal) | nej |
+| `beskrivelse` | tekst | nej |
+| `tekniske_noter` | tekst | nej |
+
+- **Formater:** Semikolon, komma og tabulator accepteres, og det samme gør UTF-8 og Windows-1252. Gem fra Excel som *CSV
+  (semikolonsepareret)*. Andre kolonner, f.eks. `status` og `start` fra en eksport, ignoreres. En eksport kan
+  derfor redigeres og importeres igen.
+- **Alt eller intet:** Har én linje fejl, importeres ingenting, og FOH viser hvilke linjer der er forkerte.
+- **Tidszone:** Tider i eksporten følger `TIMEZONE` (standard `Europe/Copenhagen`).
+
 ### Scene (`/stage`)
 
 Tryk på et punkt for at vælge det, og tryk derefter **Anmod om klargøring**. Når FOH har kvitteret, vises
@@ -170,6 +199,8 @@ Skrivekald kræver login og headeren `X-Live-Client: 1` (simpel CSRF-beskyttelse
 | DELETE | `/api/items/{id}` | FOH (blød sletning) |
 | POST | `/api/items/{id}/move` | FOH (`{"direction": "up"|"down"}`) |
 | POST | `/api/items/{id}/actions/{action}` | FOH / Scene / enhed (`request`, `withdraw`, `ready`, `start`, `finish`, `cancel`, `reopen`) |
+| GET | `/api/export.csv` | FOH (`?skabelon=1` for skabelon) |
+| POST | `/api/import` | FOH (multipart: `file`, `mode` = `append` eller `replace`) |
 | GET | `/api/device/state` | FOH / enhed (kompakt tilstand til Presto) |
 | WS | `/ws` | alle (kun læsning) |
 

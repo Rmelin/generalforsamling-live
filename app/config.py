@@ -25,6 +25,7 @@ class Settings:
     session_max_age: int = 60 * 60 * 24 * 7
     event_name: str = "Generalforsamling Live"
     device_token: str = ""  # tom = ingen enheder (Presto) har adgang
+    timezone: str = "Europe/Copenhagen"  # til tider i CSV-eksport
     ping_interval: float = 10.0
     warnings: list[str] = field(default_factory=list)
 
@@ -64,6 +65,7 @@ def load_settings() -> Settings:
         session_max_age=int(env.get("SESSION_MAX_AGE", str(60 * 60 * 24 * 7))),
         event_name=env.get("EVENT_NAME", "Generalforsamling Live") or "Generalforsamling Live",
         device_token=env.get("DEVICE_TOKEN", "").strip(),
+        timezone=env.get("TIMEZONE", "Europe/Copenhagen").strip() or "Europe/Copenhagen",
     )
     if s.device_token and len(s.device_token) < 16:
         s.warnings.append("DEVICE_TOKEN er kortere end 16 tegn – brug en længere, tilfældig værdi.")

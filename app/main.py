@@ -9,14 +9,14 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, Optional
 
-from fastapi import Depends, FastAPI, Form, Request, WebSocket
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi import Depends, FastAPI, File, Form, Request, UploadFile, WebSocket
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.concurrency import run_in_threadpool
 from starlette.middleware.sessions import SessionMiddleware
 
-from . import services
+from . import csvio, services
 from . import state as st
 from .auth import (
     STAGE_USERNAME,
@@ -207,6 +207,44 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
         return {"events": await run_in_threadpool(services.list_events, db, limit)}
 
     # ------------------------------------------------------------ API: skrivning
+
+    # ------------------------------------------------------------ CSV
+
+    @app.get("/api/export.csv")
+    async def export_csv(skabelon: bool = False, _actor: Actor = Depends(foh_only)):
+        if skabelon:
+            body, name = csvio.template_csv(), "program-skabelon.csv"
+        else:
+            snap = await run_in_threadpool(services.snapshot, db)
+            body = csvio.export_csv(snap["items"], settings.timezone)
+            from datetime import datetime
+            from zoneinfo import ZoneInfo
+            stamp = datetime.now(ZoneInfo(settings.timezone)).strftime("%Y-%m-%d_%H%M")
+            name = f"program-{stamp}.csv"
+        return Response(
+            content=body.encode("utf-8"),
+            media_type="text/csv; charset=utf-8",
+            headers={"Content-Disposition": f'attachment; filename="{name}"'},
+        )
+
+    @app.post("/api/import", dependencies=write_guard)
+    async def import_csv(
+        file: UploadFile = File(...),
+        mode: str = Form("append"),
+        actor: Actor = Depends(foh_only),
+    ):
+        if mode not in ("append", "replace"):
+            return JSONResponse({"detail": "Ukendt importtype."}, status_code=400)
+        data = await file.read(csvio.MAX_BYTES + 1)
+        if len(data) > csvio.MAX_BYTES:
+            return JSONResponse({"detail": "Filen er for stor (højst 1 MB)."}, status_code=413)
+        try:
+            rows = csvio.parse_csv(csvio.decode(data))
+        except csvio.CsvImportError as exc:
+            return JSONResponse({"detail": exc.message, "errors": exc.errors}, status_code=422)
+        result = await run_in_threadpool(services.import_items, db, rows, mode == "replace", actor)
+        snap = await broadcast_state()
+        return {**result, "state": snap}
 
     @app.post("/api/items", status_code=201, dependencies=write_guard)
     async def create_item(data: ItemCreate, actor: Actor = Depends(foh_only)):

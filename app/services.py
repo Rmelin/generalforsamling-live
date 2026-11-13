@@ -258,6 +258,44 @@ def create_item(db: Database, data: ItemCreate, actor: Actor) -> dict[str, Any]:
         return item_to_dict(item)
 
 
+def import_items(db: Database, rows: list[ItemCreate], replace: bool, actor: Actor) -> dict[str, int]:
+    """Importér punkter i én transaktion (alt eller intet).
+
+    replace=True fjerner først alle punkter, der hverken afvikles eller er
+    afsluttet/annulleret (blød sletning – de bevares i databasen og loggen).
+    """
+    with db.write() as s:
+        removed = 0
+        now = utcnow()
+        if replace:
+            old = s.scalars(
+                select(Item).where(
+                    Item.deleted.is_(False),
+                    Item.status.in_((st.PENDING, st.REQUESTED, st.READY)),
+                )
+            ).all()
+            for it in old:
+                it.deleted = True
+                it.version += 1
+                it.updated_at = now
+                _log(s, actor, "delete", it, it.status, None, "Erstattet ved CSV-import")
+                removed += 1
+        order = s.scalar(select(func.max(Item.sort_order))) or 0
+        for data in rows:
+            order += 10
+            item = Item(
+                title=data.title, item_type=data.item_type, description=data.description,
+                technical_notes=data.technical_notes, duration_seconds=data.duration_seconds,
+                optional=data.optional, status=st.PENDING, sort_order=order, version=1,
+                created_at=now, updated_at=now,
+            )
+            s.add(item)
+            s.flush()
+            _log(s, actor, "create", item, None, st.PENDING, "CSV-import")
+        _bump_revision(s)
+        return {"imported": len(rows), "removed": removed}
+
+
 def update_item(db: Database, item_id: int, data: ItemUpdate, actor: Actor) -> dict[str, Any]:
     with db.write() as s:
         item = _get_item(s, item_id)

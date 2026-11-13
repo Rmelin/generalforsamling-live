@@ -605,3 +605,16 @@ label > input, label > select, label > textarea { color: var(--text); font-size:
 .item-row.live-hl { border-left-width: 8px !important; }
 .mon-now.live-hl { border-width: 6px !important; }
 .stage-now.live-hl .stage-now-time { color: var(--live-ink); }
+
+/* ------------------------------------------------------------ CSV import/eksport */
+.io-card { padding: 0; }
+.io-card > summary { padding: 10px 14px; cursor: pointer; font-weight: 700; list-style-position: inside; }
+.io-body { padding: 0 14px 14px; display: flex; flex-direction: column; gap: 10px; }
+.io-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.io-import { display: flex; flex-direction: column; gap: 8px; }
+.io-import input[type=file] { padding: 6px; }
+.io-help { font-size: 0.8rem; margin: 0; }
+.import-result { padding: 8px 12px; border-radius: 8px; font-size: 0.9rem; }
+.import-result.ok { border: 1px solid var(--ok); background: color-mix(in srgb, var(--ok) 12%, transparent); }
+.import-result.error { border: 2px solid var(--danger); background: color-mix(in srgb, var(--danger) 10%, transparent); }
+.import-result ul { margin: 6px 0 0; padding-left: 18px; }

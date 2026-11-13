@@ -24,6 +24,30 @@
       <button class="btn btn-primary" type="submit">Tilføj</button>
     </form>
 
+    <details class="card io-card" id="io-card">
+      <summary>Import / eksport (CSV)</summary>
+      <div class="io-body">
+        <div class="io-row">
+          <a class="btn" href="/api/export.csv" download>⬇ Eksportér program</a>
+          <a class="btn btn-ghost" href="/api/export.csv?skabelon=1" download>Hent skabelon</a>
+        </div>
+        <form id="import-form" class="io-import" autocomplete="off">
+          <input type="file" id="import-file" name="file" accept=".csv,text/csv,.txt" required aria-label="CSV-fil">
+          <fieldset class="opt-field"><legend>Ved import</legend>
+            <label class="radio"><input type="radio" name="mode" value="append" checked> Tilføj til programmet</label>
+            <label class="radio"><input type="radio" name="mode" value="replace"> Erstat programmet</label>
+          </fieldset>
+          <button class="btn btn-primary" type="submit" id="import-btn">⬆ Importér</button>
+        </form>
+        <div id="import-result" class="import-result" hidden></div>
+        <p class="muted io-help">
+          Kolonner: <strong>titel</strong> (påkrævet), type (Tale / Video / Andet), varighed (5:00 eller 5 = 5 min),
+          afvikling (Skal / Mulighed), beskrivelse, tekniske_noter. Semikolon eller komma. Gem fra Excel som
+          "CSV (semikolonsepareret)". Eksporten kan redigeres og importeres igen.
+        </p>
+      </div>
+    </details>
+
     <div id="request-alert" class="request-alert" hidden></div>
 
     <div class="list-head">
@@ -50,4 +74,4 @@
   </section>
 </main>
 {% endblock %}
-{% block scripts %}<script src="{{ url_for('static', path='js/foh.js') }}?v=6"></script>{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', path='js/foh.js') }}?v=7"></script>{% endblock %}

@@ -30,6 +30,49 @@
     }, "Punkt oprettet");
   });
 
+  // ------------------------------------------------------------ CSV-import
+
+  $("import-form").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var file = $("import-file").files[0];
+    if (!file) return;
+    var mode = e.target.querySelector("[name=mode]:checked").value;
+    if (mode === "replace" && !confirm(
+      "Erstat programmet med indholdet af \"" + file.name + "\"?\n\n" +
+      "Alle punkter, der hverken afvikles eller er afsluttet, fjernes fra listen. " +
+      "De bevares i historikken. Det punkt, der afvikles nu, berøres ikke.")) return;
+    var box = $("import-result");
+    var fd = new FormData();
+    fd.append("file", file);
+    fd.append("mode", mode);
+    L.run($("import-btn"), function () {
+      return fetch("/api/import", {
+        method: "POST", body: fd, credentials: "same-origin",
+        headers: { "X-Live-Client": "1", "Accept": "application/json" }
+      }).catch(function () {
+        throw { message: "Kunne ikke kontakte serveren. Intet er importeret." };
+      }).then(function (res) {
+        return res.json().catch(function () { return {}; }).then(function (data) {
+          if (data.state) L.applySnapshot(data.state);
+          if (res.status === 401) location.href = "/login?next=/foh";
+          if (!res.ok) {
+            box.hidden = false;
+            box.className = "import-result error";
+            box.innerHTML = "<strong>" + esc(data.detail || ("Fejl " + res.status)) + "</strong>" +
+              (data.errors && data.errors.length ? "<ul>" + data.errors.map(function (m) { return "<li>" + esc(m) + "</li>"; }).join("") + "</ul>" : "");
+            throw { message: data.detail || "Importen mislykkedes." };
+          }
+          box.hidden = false;
+          box.className = "import-result ok";
+          box.textContent = data.imported + " punkt(er) importeret" +
+            (data.removed ? ", " + data.removed + " erstattet" : "") + ".";
+          $("import-file").value = "";
+          L.toast(data.imported + " punkter importeret", "ok");
+        });
+      });
+    });
+  });
+
   $("toggle-archive").addEventListener("change", function (e) { showArchive = e.target.checked; render(); });
   $("toggle-history").addEventListener("change", function (e) {
     showHistory = e.target.checked; $("history-card").hidden = !showHistory;
