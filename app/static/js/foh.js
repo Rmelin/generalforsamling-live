@@ -7,6 +7,8 @@
   var editor = { id: null, version: null, dirty: false };
   var showArchive = false, showHistory = false;
   var seenRequests = {}; // id -> requested_at, til fremhævelse af nye anmodninger
+  var placeFor = null;    // det valgte punkt, som "Indsæt"-vælgeren sidst blev sat efter
+  var dragId = null;      // punkt, der trækkes
 
   var $ = function (id) { return document.getElementById(id); };
 
@@ -20,10 +22,16 @@
     if (dur === null) { L.toast("Varighed skal angives som mm:ss eller minutter.", "error"); return; }
     var btn = e.target.querySelector("button[type=submit]");
     L.run(btn, function () {
-      return L.api("POST", "/api/items", {
+      var payload = {
         title: title, item_type: $("qa-type").value, duration_seconds: dur, optional: $("qa-optional").checked
-      }).then(function (res) {
+      };
+      var place = $("qa-place").value;
+      if (place === "selected" && selectedId != null) payload.after_id = selectedId;
+      else if (place === "after_live") payload.place = "after_live";
+      return L.api("POST", "/api/items", payload).then(function (res) {
         $("qa-title").value = ""; $("qa-duration").value = ""; $("qa-optional").checked = false;
+        // Vælg det nye punkt, så næste "Efter valgte punkt" kommer lige efter det.
+        if (!editor.dirty) { selectedId = res.item.id; placeFor = null; render(); }
         $("qa-title").focus();
         return res;
       });
@@ -83,7 +91,8 @@
   // ------------------------------------------------------------ rendering
 
   function render() {
-    renderList();
+    renderPlaceSelect();
+    if (dragId == null) renderList(); // genopbyg ikke listen midt i et træk
     renderArchive();
     renderAlert();
     renderNow();
@@ -103,6 +112,23 @@
     return "";
   }
 
+  function renderPlaceSelect() {
+    var sel = $("qa-place");
+    var item = selectedId != null ? L.byId(selectedId) : null;
+    var active = item && ["pending", "requested", "ready", "live"].indexOf(item.status) >= 0;
+    var optSel = sel.querySelector("[value=selected]");
+    var optLive = sel.querySelector("[value=after_live]");
+    optSel.disabled = !active;
+    optSel.textContent = active ? "Efter: " + (item.title.length > 22 ? item.title.slice(0, 21) + "…" : item.title) : "Efter valgte punkt";
+    optLive.disabled = !L.current();
+    // Standard: efter det valgte punkt, når et er valgt – ellers sidst.
+    if (placeFor !== selectedId) {
+      placeFor = selectedId;
+      sel.value = active ? "selected" : "bottom";
+    }
+    if (sel.selectedOptions[0] && sel.selectedOptions[0].disabled) sel.value = "bottom";
+  }
+
   function renderList() {
     var list = L.active();
     $("active-count").textContent = "(" + list.length + " aktive)";
@@ -111,6 +137,7 @@
       if (item.status === "requested") cls += " attention";
       if (item.status === "live") cls += " live-hl";
       return '<li class="' + cls + '" data-id="' + item.id + '" tabindex="0">' +
+        '<span class="row-grip" draggable="true" title="Træk for at flytte" aria-hidden="true">⋮⋮</span>' +
         '<span class="row-num">' + (idx + 1) + "</span>" +
         '<span class="row-main"><span class="row-title">' + esc(item.title) + "</span>" +
         '<span class="row-meta">' + L.typeChip(item.item_type) + L.optChip(item) +
@@ -171,24 +198,28 @@
       '<div class="now-title">' + esc(cur.title) + "</div>" +
       '<div class="now-meta">' + L.typeChip(cur.item_type) + L.optChip(cur) +
       "<span>Start " + L.fmtClockSec(cur.started_at) + "</span>" + timing + "</div>" +
-      '<div class="card-actions"><button type="button" class="btn btn-lg btn-finish" data-act="finish" data-id="' + cur.id + '">■ Afslut</button></div>';
+      '<div class="card-actions"><button type="button" class="btn btn-lg btn-finish" data-act="finish" data-id="' + cur.id + '">■ Afslut <kbd>.</kbd></button></div>';
   }
 
   function renderNext() {
     var el = $("next-card");
     var chosen = L.chosen();
-    if (!chosen.length) {
-      el.innerHTML = '<div class="card-label">Næste (ønsket af scenen)</div><div class="muted">Ingen anmodning fra scenen.</div>';
+    var target = keyTarget();
+    var fallback = !chosen.length;
+    var list = fallback ? (target ? [target] : []) : chosen;
+    if (!list.length) {
+      el.innerHTML = '<div class="card-label">Næste</div><div class="muted">Ingen flere punkter.</div>';
       return;
     }
-    el.innerHTML = '<div class="card-label">Næste (ønsket af scenen)</div>' + chosen.map(function (n) {
+    var key = function (n, k) { return target && n.id === target.id ? " <kbd>" + k + "</kbd>" : ""; };
+    el.innerHTML = '<div class="card-label">' + (fallback ? "Næste i programmet <span class=\"muted\">(ikke valgt af scenen)</span>" : "Næste (ønsket af scenen)") + "</div>" + list.map(function (n) {
       return '<div class="next-row st-row-' + n.status + '">' +
         '<div class="next-info"><div class="next-title">' + esc(n.title) + "</div>" +
         '<div class="now-meta">' + L.typeChip(n.item_type) + L.optChip(n) + L.statusBadge(n.status) + "<span>" + L.fmtItemDur(n) + "</span></div>" +
         (n.technical_notes ? '<div class="note">' + esc(n.technical_notes) + "</div>" : "") + "</div>" +
         '<div class="card-actions">' +
-        (n.status === "requested" ? '<button type="button" class="btn btn-ready" data-act="ready" data-id="' + n.id + '">✓ Klar</button>' : "") +
-        '<button type="button" class="btn btn-start" data-act="start" data-id="' + n.id + '">▶ Start</button>' +
+        (n.status === "requested" || n.status === "pending" ? '<button type="button" class="btn btn-ready" data-act="ready" data-id="' + n.id + '">✓ Klar' + key(n, "M") + "</button>" : "") +
+        '<button type="button" class="btn btn-start" data-act="start" data-id="' + n.id + '">▶ Start' + key(n, ",") + "</button>" +
         "</div></div>";
     }).join("");
   }
@@ -237,7 +268,8 @@
       '<div class="editor-save span2"><button type="submit" class="btn btn-primary" id="ed-save" disabled>Gem ændringer</button>' +
       '<button type="button" class="btn btn-ghost" id="ed-delete">Slet</button></div>' +
       "</form>" +
-      '<div class="card-actions editor-actions" id="ed-actions">' + actionButtons(item) + "</div>";
+      '<div class="card-actions editor-actions" id="ed-actions">' + actionButtons(item) + "</div>" +
+      '<div class="card-actions editor-place" id="ed-place">' + placeButtons(item) + "</div>";
 
     var form = $("ed-form");
     form.addEventListener("input", function () { editor.dirty = true; $("ed-save").disabled = false; });
@@ -292,6 +324,17 @@
     // Status og handlinger opdateres altid fra serveren.
     $("ed-status").innerHTML = L.statusBadge(item.status);
     $("ed-actions").innerHTML = actionButtons(item);
+    $("ed-place").innerHTML = placeButtons(item);
+  }
+
+  function placeButtons(item) {
+    if (["pending", "requested", "ready"].indexOf(item.status) < 0) return "";
+    var cur = L.current();
+    return '<span class="muted">Flyt:</span>' +
+      '<button type="button" class="btn btn-sm" data-place="top" data-id="' + item.id + '">⤒ Øverst</button>' +
+      '<button type="button" class="btn btn-sm" data-place="after_live" data-id="' + item.id + '"' + (cur ? "" : " disabled") +
+      ">↧ Efter det, der afvikles</button>" +
+      '<button type="button" class="btn btn-sm" data-place="bottom" data-id="' + item.id + '">⤓ Sidst</button>';
   }
 
   // ------------------------------------------------------------ handlinger
@@ -312,7 +355,14 @@
       if (!item) return;
       var q = CONFIRM[action] && CONFIRM[action](item);
       if (q && !confirm(q)) return;
+      if (action === "finish") { doFinish(item, actBtn); return; }
       L.run(actBtn, function () { return L.action(item, action); });
+      return;
+    }
+    var placeBtn = e.target.closest("[data-place]");
+    if (placeBtn) {
+      var pid = parseInt(placeBtn.getAttribute("data-id"), 10);
+      L.run(placeBtn, function () { return placeItem(pid, { where: placeBtn.getAttribute("data-place") }); });
       return;
     }
     var row = e.target.closest(".item-row");
@@ -334,15 +384,178 @@
     render();
   });
 
+  function placeItem(id, body) {
+    return L.api("POST", "/api/items/" + id + "/place", body);
+  }
+
+  // ------------------------------------------------------------ afslut + fortryd
+
+  function doFinish(item, btn) {
+    return L.run(btn, function () {
+      return L.action(item, "finish").then(function (res) {
+        if (res && res.changed) showUndo(item);
+      });
+    });
+  }
+
+  var undoEl = null;
+  function showUndo(item) {
+    if (undoEl) undoEl.remove();
+    var box = $("toasts");
+    var el = document.createElement("div");
+    el.className = "toast toast-undo";
+    el.setAttribute("role", "status");
+    var left = 5;
+    el.innerHTML = '<span>■ "' + esc(item.title) + '" afsluttet</span>' +
+      '<button type="button" class="btn btn-sm btn-primary">Fortryd (' + left + ")</button>";
+    var btn = el.querySelector("button");
+    var timer = setInterval(function () {
+      left--;
+      if (left <= 0) { clearInterval(timer); el.remove(); if (undoEl === el) undoEl = null; return; }
+      btn.textContent = "Fortryd (" + left + ")";
+    }, 1000);
+    btn.addEventListener("click", function () {
+      clearInterval(timer);
+      L.run(btn, function () {
+        return L.api("POST", "/api/items/" + item.id + "/actions/unfinish", { expected_status: "done" });
+      }, "Afslutning fortrudt – punktet afvikles igen").finally(function () { el.remove(); });
+    });
+    box.appendChild(el);
+    undoEl = el;
+  }
+
+  // ------------------------------------------------------------ tastaturgenveje
+  // M = Klar, ',' = Start, '.' = Stop (afslut). Virker ikke, mens man skriver i et felt.
+
+  function keyTarget() {
+    var c = L.chosen();
+    if (c.length) return c[0];
+    var q = L.queue();
+    return q.length ? q[0] : null;
+  }
+
+  function isTyping(el) {
+    if (!el || !el.tagName) return false;
+    if (el.isContentEditable) return true;
+    var tag = el.tagName;
+    if (tag === "TEXTAREA" || tag === "SELECT") return true;
+    if (tag !== "INPUT") return false;
+    return ["checkbox", "radio", "button", "submit", "reset", "file"].indexOf(el.type) < 0;
+  }
+
+  function flash(selector) {
+    var b = document.querySelector(selector);
+    if (!b) return null;
+    b.classList.remove("key-flash"); void b.offsetWidth; b.classList.add("key-flash");
+    return b;
+  }
+
+  function toggleKeyHelp(show) {
+    var h = $("key-help");
+    h.hidden = show === undefined ? !h.hidden : !show;
+  }
+  $("btn-keys").addEventListener("click", function () { toggleKeyHelp(); });
+  $("key-help-close").addEventListener("click", function () { toggleKeyHelp(false); });
+
   document.addEventListener("keydown", function (e) {
-    if (e.key === "Enter" && e.target.classList && e.target.classList.contains("item-row")) e.target.click();
+    if (e.key === "Enter" && e.target.classList && e.target.classList.contains("item-row")) { e.target.click(); return; }
+    if (e.key === "Escape") { toggleKeyHelp(false); return; }
+    if (e.ctrlKey || e.metaKey || e.altKey || e.repeat || isTyping(e.target)) return;
+    var k = e.key;
+    if (k === "?") { e.preventDefault(); toggleKeyHelp(); return; }
+    // Tegnet først; ellers den fysiske tast (samme plads på dansk og engelsk tastatur)
+    if (k !== "m" && k !== "M" && k !== "," && k !== ".") {
+      k = { KeyM: "m", Comma: ",", Period: "." }[e.code];
+      if (!k) return;
+    }
+    e.preventDefault();
+    if (!L.connected) { L.toast("Ingen forbindelse til serveren – handlingen er ikke udført.", "error"); return; }
+
+    if (k === ".") {
+      var cur = L.current();
+      if (!cur) { L.toast("Intet punkt afvikles.", "info"); return; }
+      var fb = flash('#now-card [data-act="finish"]');
+      doFinish(cur, fb);
+      return;
+    }
+    var t = keyTarget();
+    if (!t) { L.toast("Der er ikke flere punkter.", "info"); return; }
+    if (k === "m" || k === "M") {
+      if (t.status === "ready") { L.toast('"' + t.title + '" er allerede klar.', "info"); return; }
+      var rb = flash('#next-card [data-act="ready"][data-id="' + t.id + '"]');
+      L.run(rb, function () { return L.action(t, "ready"); }, '✓ "' + t.title + '" er klar');
+      return;
+    }
+    // Start
+    var q = CONFIRM.start(t);
+    if (q && !confirm(q)) return;
+    var sb = flash('#next-card [data-act="start"][data-id="' + t.id + '"]');
+    L.run(sb, function () { return L.action(t, "start"); }, '▶ "' + t.title + '" startet');
+  });
+
+  // ------------------------------------------------------------ træk og slip
+
+  var listEl = $("item-list");
+  function clearDrop() {
+    var marks = listEl.querySelectorAll(".drop-before, .drop-after, .dragging");
+    for (var i = 0; i < marks.length; i++) marks[i].classList.remove("drop-before", "drop-after", "dragging");
+  }
+  function dropTarget(e) {
+    var row = e.target.closest && e.target.closest("#item-list .item-row");
+    if (!row) {
+      // Under sidste række: placér sidst
+      var rows = listEl.querySelectorAll(".item-row");
+      var last = rows[rows.length - 1];
+      if (last && e.clientY > last.getBoundingClientRect().bottom) return { row: last, before: false };
+      return null;
+    }
+    var r = row.getBoundingClientRect();
+    return { row: row, before: e.clientY < r.top + r.height / 2 };
+  }
+  listEl.addEventListener("dragstart", function (e) {
+    var grip = e.target.closest && e.target.closest(".row-grip");
+    if (!grip) { e.preventDefault(); return; }
+    var row = grip.closest(".item-row");
+    dragId = parseInt(row.getAttribute("data-id"), 10);
+    row.classList.add("dragging");
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", String(dragId));
+    try { e.dataTransfer.setDragImage(row, 24, 20); } catch (err) {}
+  });
+  listEl.addEventListener("dragover", function (e) {
+    if (dragId == null) return;
+    var t = dropTarget(e);
+    var marks = listEl.querySelectorAll(".drop-before, .drop-after");
+    for (var i = 0; i < marks.length; i++) marks[i].classList.remove("drop-before", "drop-after");
+    if (!t || parseInt(t.row.getAttribute("data-id"), 10) === dragId) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    t.row.classList.add(t.before ? "drop-before" : "drop-after");
+  });
+  listEl.addEventListener("drop", function (e) {
+    if (dragId == null) return;
+    e.preventDefault();
+    var t = dropTarget(e);
+    var id = dragId;
+    clearDrop();
+    dragId = null;
+    if (!t) { render(); return; }
+    var targetId = parseInt(t.row.getAttribute("data-id"), 10);
+    if (targetId === id) { render(); return; }
+    L.run(null, function () {
+      return placeItem(id, t.before ? { before_id: targetId } : { after_id: targetId });
+    });
+  });
+  listEl.addEventListener("dragend", function () {
+    clearDrop();
+    if (dragId != null) { dragId = null; render(); }
   });
 
   // ------------------------------------------------------------ historik
 
   var ACTION_NAMES = { create: "Oprettet", edit: "Redigeret", delete: "Slettet", move: "Flyttet",
     request: "Anmodet", withdraw: "Anmodning trukket", ready: "Klar", start: "Startet",
-    finish: "Afsluttet", cancel: "Annulleret", reopen: "Genåbnet" };
+    finish: "Afsluttet", cancel: "Annulleret", reopen: "Genåbnet", unfinish: "Afslutning fortrudt" };
 
   function loadHistory() {
     L.api("GET", "/api/events?limit=300").then(function (data) {

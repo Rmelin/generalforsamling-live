@@ -52,6 +52,8 @@ ACTIONS: dict[str, tuple[str, dict[str, frozenset[str]]]] = {
     "cancel": (CANCELLED, {ROLE_FOH: frozenset({PENDING, REQUESTED, READY, LIVE}),
                            ROLE_DEVICE: frozenset({PENDING, REQUESTED, READY, LIVE})}),
     "reopen": (PENDING, {ROLE_FOH: frozenset({DONE, CANCELLED})}),
+    # Fortryd en afslutning: tilbage til Afvikles med den oprindelige starttid
+    "unfinish": (LIVE, {ROLE_FOH: frozenset({DONE})}),
 }
 
 ACTION_LABELS = {
@@ -62,6 +64,7 @@ ACTION_LABELS = {
     "finish": "Afslut",
     "cancel": "Annullér",
     "reopen": "Genåbn",
+    "unfinish": "Fortryd afslutning",
 }
 
 

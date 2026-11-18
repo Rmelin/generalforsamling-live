@@ -31,7 +31,7 @@ from .config import Settings, load_settings
 from .db import Database
 from .models import utcnow
 from .realtime import Connection, ConnectionManager
-from .schemas import ActionRequest, ItemCreate, ItemUpdate, MoveRequest
+from .schemas import ActionRequest, ItemCreate, ItemUpdate, MoveRequest, PlaceRequest
 from .seed import seed
 from .services import Actor, ServiceError
 
@@ -277,6 +277,14 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
         )
         snap = await broadcast_state() if changed else await run_in_threadpool(services.snapshot, db)
         return {"item": item, "changed": changed, "state": snap}
+
+    @app.post("/api/items/{item_id}/place", dependencies=write_guard)
+    async def place_item(item_id: int, body: PlaceRequest, actor: Actor = Depends(foh_only)):
+        changed = await run_in_threadpool(
+            services.place_item, db, item_id, actor, body.before_id, body.after_id, body.where
+        )
+        snap = await broadcast_state() if changed else await run_in_threadpool(services.snapshot, db)
+        return {"changed": changed, "state": snap}
 
     @app.post("/api/items/{item_id}/move", dependencies=write_guard)
     async def move_item(item_id: int, body: MoveRequest, actor: Actor = Depends(foh_only)):

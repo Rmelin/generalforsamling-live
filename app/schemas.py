@@ -7,6 +7,7 @@ from typing import Literal, Optional
 from pydantic import BaseModel, Field, field_validator
 
 ItemType = Literal["speech", "video", "other"]
+Placement = Literal["bottom", "top", "after_live"]
 
 
 class _Text(BaseModel):
@@ -23,6 +24,9 @@ class ItemCreate(_Text):
     technical_notes: str = Field(default="", max_length=5000)
     duration_seconds: int = Field(default=0, ge=0, le=24 * 3600)
     optional: bool = False
+    # Placering ved oprettelse (standard: sidst)
+    after_id: Optional[int] = None
+    place: Optional[Placement] = None
 
 
 class ItemUpdate(_Text):
@@ -43,3 +47,11 @@ class ActionRequest(BaseModel):
 
 class MoveRequest(BaseModel):
     direction: Literal["up", "down"]
+
+
+class PlaceRequest(BaseModel):
+    """Flyt et punkt: før/efter et andet punkt, eller øverst/sidst/efter det, der afvikles."""
+
+    before_id: Optional[int] = None
+    after_id: Optional[int] = None
+    where: Optional[Placement] = None

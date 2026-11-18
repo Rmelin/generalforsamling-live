@@ -253,7 +253,10 @@ def create_item(db: Database, data: ItemCreate, actor: Actor) -> dict[str, Any]:
         )
         s.add(item)
         s.flush()
-        _log(s, actor, "create", item, None, st.PENDING)
+        label = None
+        if data.after_id is not None or data.place not in (None, "bottom"):
+            label = _place(s, item, after_id=data.after_id, where=data.place)
+        _log(s, actor, "create", item, None, st.PENDING, f"Indsat {label}" if label else "")
         _bump_revision(s)
         return item_to_dict(item)
 
@@ -372,6 +375,14 @@ def apply_action(
             raise Conflict(exc.message) from exc
 
         now = utcnow()
+        if action == "unfinish":
+            other_live = s.scalar(
+                select(Item.title).where(
+                    Item.status == st.LIVE, Item.deleted.is_(False), Item.id != item.id
+                )
+            )
+            if other_live:
+                raise Conflict(f"'{other_live}' afvikles nu – afslutningen kan ikke fortrydes.")
         if action == "start":
             # Kun ét punkt kan afvikles ad gangen: et igangværende punkt afsluttes.
             others = s.scalars(
@@ -409,6 +420,8 @@ def apply_action(
         elif action == "reopen":
             item.requested_at = None
             item.ready_at = None
+        elif action == "unfinish":
+            item.ended_at = None  # starttiden bevares
 
         _log(s, actor, action, item, current, target)
         _bump_revision(s)
@@ -443,6 +456,77 @@ def move_item(db: Database, item_id: int, direction: str, actor: Actor) -> bool:
             it.updated_at = now
         _log(s, actor, "move", item, item.status, item.status,
              "op" if direction == "up" else "ned")
+        _bump_revision(s)
+        return True
+
+
+_WHERE_LABEL = {"top": "øverst", "bottom": "sidst", "after_live": "efter det, der afvikles"}
+
+
+def _place(
+    s: Session,
+    item: Item,
+    before_id: Optional[int] = None,
+    after_id: Optional[int] = None,
+    where: Optional[str] = None,
+) -> Optional[str]:
+    """Placér et aktivt punkt. Returnerer en beskrivelse, eller None hvis intet ændredes."""
+    active = s.scalars(
+        select(Item)
+        .where(Item.deleted.is_(False), Item.status.in_(st.ACTIVE_STATUSES))
+        .order_by(Item.sort_order, Item.id)
+    ).all()
+    if item not in active:
+        raise Conflict("Kun aktive punkter kan flyttes.")
+    others = [i for i in active if i.id != item.id]
+    ids = [i.id for i in others]
+
+    def idx_of(target_id: int) -> int:
+        if target_id not in ids:
+            raise Conflict("Punktet, der skulle placeres ved, er ikke længere på listen.")
+        return ids.index(target_id)
+
+    if before_id is not None:
+        idx = idx_of(before_id)
+        label = f"før '{others[idx].title}'"
+    elif after_id is not None:
+        idx = idx_of(after_id) + 1
+        label = f"efter '{others[idx - 1].title}'"
+    elif where == "top":
+        idx, label = 0, _WHERE_LABEL["top"]
+    elif where == "after_live":
+        live = next((n for n, i in enumerate(others) if i.status == st.LIVE), None)
+        idx, label = (0 if live is None else live + 1), _WHERE_LABEL["after_live"]
+    else:
+        idx, label = len(others), _WHERE_LABEL["bottom"]
+
+    new_order = others[:idx] + [item] + others[idx:]
+    if [i.id for i in new_order] == [i.id for i in active]:
+        return None
+    now = utcnow()
+    for n, it in enumerate(new_order):
+        value = (n + 1) * 10
+        if it.sort_order != value:
+            it.sort_order = value
+            it.version += 1
+            it.updated_at = now
+    return label
+
+
+def place_item(
+    db: Database,
+    item_id: int,
+    actor: Actor,
+    before_id: Optional[int] = None,
+    after_id: Optional[int] = None,
+    where: Optional[str] = None,
+) -> bool:
+    with db.write() as s:
+        item = _get_item(s, item_id)
+        label = _place(s, item, before_id, after_id, where)
+        if label is None:
+            return False
+        _log(s, actor, "move", item, item.status, item.status, label)
         _bump_revision(s)
         return True
 

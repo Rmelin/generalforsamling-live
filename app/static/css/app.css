@@ -307,7 +307,7 @@ label > input, label > select, label > textarea { color: var(--text); font-size:
 .list-head { display: flex; align-items: baseline; justify-content: space-between; }
 .item-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 .item-row {
-  display: grid; grid-template-columns: 34px 1fr auto 86px auto; gap: 10px; align-items: center;
+  display: grid; grid-template-columns: 16px 28px 1fr auto 86px auto; gap: 10px; align-items: center;
   padding: 8px 10px; border-radius: 10px; background: var(--bg-elev); border: 1px solid var(--border);
   border-left-width: 6px; cursor: pointer;
 }
@@ -360,7 +360,7 @@ label > input, label > select, label > textarea { color: var(--text); font-size:
   .quick-add { grid-template-columns: 1fr 1fr; }
   .quick-add #qa-title { grid-column: span 2; }
   .item-row { grid-template-columns: 1fr auto; }
-  .row-num, .row-move { display: none; }
+  .row-grip, .row-num, .row-move { display: none; }
   .row-status { grid-row: 2; }
   .editor-form { grid-template-columns: 1fr; }
   .editor-form .span2 { grid-column: auto; }
@@ -575,7 +575,7 @@ label > input, label > select, label > textarea { color: var(--text); font-size:
 .mon-item.is-optional .mon-item-title { font-style: italic; }
 
 .qa-optional { white-space: nowrap; }
-.quick-add { grid-template-columns: 1fr 110px 90px auto auto; }
+.quick-add { grid-template-columns: minmax(160px, 1fr) 96px 80px minmax(150px, 190px) auto auto; }
 .opt-field { border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px 8px; display: flex; gap: 18px; flex-wrap: wrap; }
 .opt-field legend { font-size: 0.85rem; color: var(--text-muted); padding: 0 4px; }
 .radio { flex-direction: row; align-items: center; gap: 6px; color: var(--text); font-size: 0.95rem; cursor: pointer; }
@@ -618,3 +618,31 @@ label > input, label > select, label > textarea { color: var(--text); font-size:
 .import-result.ok { border: 1px solid var(--ok); background: color-mix(in srgb, var(--ok) 12%, transparent); }
 .import-result.error { border: 2px solid var(--danger); background: color-mix(in srgb, var(--danger) 10%, transparent); }
 .import-result ul { margin: 6px 0 0; padding-left: 18px; }
+
+/* ------------------------------------------------------------ træk og slip, taster, fortryd */
+.row-grip {
+  cursor: grab; color: var(--text-muted); font-weight: 900; letter-spacing: -2px;
+  user-select: none; text-align: center; line-height: 1; padding: 6px 0;
+}
+.row-grip:hover { color: var(--accent); }
+.item-row.dragging { opacity: 0.4; }
+.item-row.drop-before { box-shadow: 0 -4px 0 0 var(--accent); }
+.item-row.drop-after { box-shadow: 0 4px 0 0 var(--accent); }
+
+kbd {
+  display: inline-block; min-width: 1.4em; padding: 0 5px; margin-left: 4px;
+  font: 700 0.8em/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; text-align: center;
+  border-radius: 5px; border: 1px solid currentColor; opacity: 0.75;
+}
+.key-flash { animation: key-flash 0.45s ease-out; }
+@keyframes key-flash { 0% { box-shadow: 0 0 0 0 var(--accent); transform: scale(1.06); } 100% { box-shadow: 0 0 0 10px transparent; transform: scale(1); } }
+
+.key-help { position: fixed; right: 16px; top: 64px; z-index: 900; width: min(420px, calc(100vw - 32px)); box-shadow: var(--shadow); }
+.key-help table { border-collapse: collapse; width: 100%; }
+.key-help td { padding: 6px 4px; vertical-align: top; }
+.key-help td:first-child { width: 48px; }
+.key-help kbd { margin: 0; font-size: 1rem; }
+.key-help p { margin: 8px 0 0; font-size: 0.85rem; }
+
+.toast-undo { border: 2px solid var(--accent); align-items: center; }
+.editor-place { gap: 6px; align-items: center; }

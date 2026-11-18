@@ -6,6 +6,7 @@
   <div class="topbar-tools">
     <label class="toggle"><input type="checkbox" id="toggle-archive"> Vis afsluttede</label>
     <label class="toggle"><input type="checkbox" id="toggle-history"> Historik</label>
+    <button type="button" class="btn btn-ghost btn-sm" id="btn-keys" title="Tastaturgenveje (?)">⌨ Taster</button>
     {% include "_topbar_tools.html" %}
     <a class="btn btn-ghost btn-sm" href="/monitor" target="_blank" rel="noopener">Monitor ↗</a>
     <a class="btn btn-ghost btn-sm" href="/logout">Log ud ({{ actor.username }})</a>
@@ -20,6 +21,11 @@
         {% for key, label in item_types.items() %}<option value="{{ key }}">{{ label }}</option>{% endfor %}
       </select>
       <input id="qa-duration" name="duration" placeholder="mm:ss" inputmode="numeric" aria-label="Varighed (mm:ss)" class="input-duration">
+      <select id="qa-place" aria-label="Indsæt" title="Hvor det nye punkt skal placeres">
+        <option value="bottom">Indsæt sidst</option>
+        <option value="selected">Efter valgte punkt</option>
+        <option value="after_live">Efter det, der afvikles</option>
+      </select>
       <label class="toggle qa-optional" title="Punktet er en mulighed og kan springes over"><input type="checkbox" id="qa-optional"> Mulighed</label>
       <button class="btn btn-primary" type="submit">Tilføj</button>
     </form>
@@ -73,5 +79,15 @@
     </article>
   </section>
 </main>
+<div id="key-help" class="key-help card" role="dialog" aria-label="Tastaturgenveje" hidden>
+  <div class="card-head"><h2>Tastaturgenveje</h2><button type="button" class="btn btn-ghost btn-sm" id="key-help-close">Luk</button></div>
+  <table>
+    <tr><td><kbd>M</kbd></td><td>Klar – næste punkt</td></tr>
+    <tr><td><kbd>,</kbd></td><td>Start – næste punkt (ønsket af scenen, ellers næste i programmet)</td></tr>
+    <tr><td><kbd>.</kbd></td><td>Stop – afslut det, der afvikles (kan fortrydes i 5 sek.)</td></tr>
+    <tr><td><kbd>?</kbd></td><td>Vis / skjul denne oversigt</td></tr>
+  </table>
+  <p class="muted">Tasterne virker ikke, mens du skriver i et felt. Klik et tomt sted på siden først.</p>
+</div>
 {% endblock %}
-{% block scripts %}<script src="{{ url_for('static', path='js/foh.js') }}?v=7"></script>{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', path='js/foh.js') }}?v=8"></script>{% endblock %}

@@ -117,6 +117,32 @@ tiden tillader det. FOH vælger det ved oprettelse (fluebenet *Mulighed*) og i r
   scenen)* (*Klar* / *Start*) og redigering af det valgte punkt, inkl. **tekniske noter** til teknikerne.
 - **Historik** (kryds af øverst) viser hændelsesloggen: tid, punkt, handling, status før og efter, og hvem.
 
+### Rækkefølge
+
+- **Træk og slip:** Tag fat i grebet **⋮⋮** til venstre for et punkt, og træk det op eller ned. En blå linje viser,
+  hvor punktet lander.
+- **Indsæt ved oprettelse:** Vælgeren i feltet til nye punkter bestemmer, hvor punktet havner:
+  - *Indsæt sidst*;
+  - *Efter: (valgte punkt)*, som er standard, når et punkt er valgt;
+  - *Efter det, der afvikles*.
+
+  Det nye punkt bliver valgt, så flere punkter i træk lægger sig efter hinanden.
+- **Redigeringspanelet:** **⤒ Øverst**, **↧ Efter det, der afvikles** og **⤓ Sidst**.
+- **▲ / ▼:** flytter ét trin ad gangen.
+
+### Tastaturgenveje (FOH)
+
+| Tast | Handling |
+|---|---|
+| `M` | **Klar** på næste punkt |
+| `,` | **Start** næste punkt: scenens valg, ellers næste i programmet |
+| `.` | **Stop** (afslut) det, der afvikles. En **Fortryd**-knap vises i 5 sekunder og sætter punktet tilbage til *Afvikles* med den oprindelige starttid |
+| `?` | Vis eller skjul oversigten over genveje (også knappen **⌨ Taster**) |
+
+- **Hvor genvejene virker:** Tasterne virker ikke, mens man skriver i et felt. Klik et tomt sted på siden først.
+- **Feedback:** Knappen, tasten svarer til, blinker kort, og tasten står på knappen.
+- **Start mens noget afvikles:** beder om bekræftelse ligesom knappen.
+
 ### Import og eksport (CSV)
 
 I FOH under **Import / eksport (CSV)**:
@@ -198,7 +224,8 @@ Skrivekald kræver login og headeren `X-Live-Client: 1` (simpel CSRF-beskyttelse
 | PATCH | `/api/items/{id}` | FOH (kræver `expected_version`) |
 | DELETE | `/api/items/{id}` | FOH (blød sletning) |
 | POST | `/api/items/{id}/move` | FOH (`{"direction": "up"|"down"}`) |
-| POST | `/api/items/{id}/actions/{action}` | FOH / Scene / enhed (`request`, `withdraw`, `ready`, `start`, `finish`, `cancel`, `reopen`) |
+| POST | `/api/items/{id}/place` | FOH (`before_id`, `after_id` eller `where` = `top`/`bottom`/`after_live`) |
+| POST | `/api/items/{id}/actions/{action}` | FOH / Scene / enhed (`request`, `withdraw`, `ready`, `start`, `finish`, `cancel`, `reopen`, `unfinish`) |
 | GET | `/api/export.csv` | FOH (`?skabelon=1` for skabelon) |
 | POST | `/api/import` | FOH (multipart: `file`, `mode` = `append` eller `replace`) |
 | GET | `/api/device/state` | FOH / enhed (kompakt tilstand til Presto) |
