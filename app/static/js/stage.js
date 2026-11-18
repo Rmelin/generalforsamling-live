@@ -34,7 +34,7 @@
       var sel = item.id === selectedId;
       return '<li role="option" aria-selected="' + sel + '" class="stage-item st-row-' + item.status + (sel ? " selected" : "") + (item.optional ? " is-optional" : "") + '" data-id="' + item.id + '">' +
         '<span class="stage-item-title">' + esc(item.title) + "</span>" +
-        '<span class="stage-item-meta">' + L.optChip(item, true) + L.typeChip(item.item_type) +
+        '<span class="stage-item-meta">' + L.optChip(item, true) + L.typeChip(item) +
         '<span class="stage-dur">' + L.fmtItemDur(item) + "</span>" +
         // "Afventer" er standard og vises ikke – kun Ønsket/Klar fremhæves.
         (item.status !== "pending" ? L.statusBadge(item.status) : "") + "</span></li>";

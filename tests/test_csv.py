@@ -34,7 +34,8 @@ def test_export_contains_program(foh):
     assert rows[0] == csvio.EXPORT_COLUMNS
     assert rows[1][1:5] == ["Velkomst – Æbler", "Tale", "5:00", "Skal"]
     assert rows[1][6] == "Mikrofon; håndholdt"  # semikolon i tekst er korrekt citeret
-    assert rows[1][7] == "Afvikles" and rows[1][8]  # status og starttid
+    assert rows[1][7:9] == ["", ""]  # ingen QLab på en tale uden video
+    assert rows[1][9] == "Afvikles" and rows[1][10]  # status og starttid
     assert rows[2][1:5] == ["Film", "Video", "1:35", "Mulighed"]
     assert b["id"]
 
@@ -140,7 +141,7 @@ def test_import_permissions(stage, anon):
 def test_template_can_be_imported(foh):
     tpl = foh.get("/api/export.csv?skabelon=1").content
     r = _upload(foh, tpl)
-    assert r.status_code == 200 and r.json()["imported"] == 3
+    assert r.status_code == 200 and r.json()["imported"] == 4
 
 
 @pytest.mark.parametrize("value,secs", [
@@ -148,3 +149,40 @@ def test_template_can_be_imported(foh):
 ])
 def test_parse_duration(value, secs):
     assert csvio.parse_duration(value) == secs
+
+
+def test_video_flag_and_qlab_roundtrip(foh):
+    text = (
+        "titel;type;varighed;qlab_cue;indlaest_i_qlab\n"
+        "Beretning;Tale + video;15;2;Ja\n"
+        "Pris;Andet med video;5;3;\n"
+        "Film;Video;1:30;1;Nej\n"
+        "Velkomst;Tale;5;;\n"
+    )
+    r = _upload(foh, text.encode("utf-8"))
+    assert r.status_code == 200, r.text
+    items = {i["title"]: i for i in foh.get("/api/state").json()["items"]}
+    assert (items["Beretning"]["item_type"], items["Beretning"]["has_video"]) == ("speech", True)
+    assert items["Beretning"]["qlab_cue"] == "2" and items["Beretning"]["qlab_loaded"] is True
+    assert (items["Pris"]["item_type"], items["Pris"]["has_video"]) == ("other", True)
+    assert items["Film"]["has_video"] is True and items["Film"]["qlab_loaded"] is False
+    assert items["Velkomst"]["has_video"] is False
+
+    rows = {r[1]: r for r in _rows(foh.get("/api/export.csv").content.decode("utf-8"))[1:]}
+    assert rows["Beretning"][2] == "Tale + video" and rows["Beretning"][7:9] == ["2", "Ja"]
+    assert rows["Pris"][2] == "Andet + video" and rows["Pris"][8] == "Nej"
+    assert rows["Velkomst"][2] == "Tale" and rows["Velkomst"][8] == ""
+
+
+@pytest.mark.parametrize("value,expected", [
+    ("Tale", ("speech", False)), ("tale + video", ("speech", True)), ("Tale+Video", ("speech", True)),
+    ("Tale med video", ("speech", True)), ("Andet / film", ("other", True)), ("Video", ("video", True)),
+])
+def test_parse_type_with_video(value, expected):
+    assert csvio._parse_type(value) == expected
+
+
+def test_bad_qlab_value_is_reported(foh):
+    r = _upload(foh, "titel;indlæst i qlab\nA;måske\n".encode("utf-8"))
+    assert r.status_code == 422
+    assert "Linje 2" in r.text and "QLab" in r.text

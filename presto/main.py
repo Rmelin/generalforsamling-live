@@ -55,6 +55,11 @@ def shorten(s, n):
     return s if len(s) <= n else s[: n - 2] + ".."
 
 
+def with_video(it):
+    """Tale/Andet med video undervejs (ren video vises ikke som +VIDEO)."""
+    return bool(it and it.get("has_video") and it.get("item_type") != "video")
+
+
 def fmt_dur(sec):
     sec = int(sec)
     neg = sec < 0
@@ -419,7 +424,7 @@ class App:
         if cur:
             self._rect(2, y, W - 4, 72, "red")
             self._rect(5, y + 3, W - 10, 66, "yellow")
-            self._text("NU  > AFVIKLES", 9, y + 6, "ink", 1)
+            self._text("NU  > AFVIKLES" + ("  +VIDEO" if with_video(cur) else ""), 9, y + 6, "ink", 1)
             rem = self.remaining_now(cur)
             if rem is not None:
                 t = fmt_dur(rem)
@@ -448,6 +453,10 @@ class App:
             self._rect(W - 14 - tw, y + 2, tw + 8, 13, pen)
             self._text(label, W - 10 - tw, y + 5, "ink", 1)
             extra = "MULIGHED  " if nxt.get("optional") else ""
+            if with_video(nxt):
+                extra += "+VIDEO  "
+            if nxt.get("has_video") and not nxt.get("qlab_loaded"):
+                extra += "!QLAB  "
             dur = fmt_dur(nxt["duration_seconds"]) if nxt.get("timed") else fmt_approx(nxt.get("duration_seconds"))
             self._text(extra + dur, 60, y + 5, "muted", 1)
             self._text(shorten(ascii_text(nxt["title"]), 36), 9, y + 20, "white", 2, W - 18)

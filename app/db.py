@@ -62,6 +62,9 @@ class Database:
     # Kolonner tilføjet efter første version: (tabel, kolonne, SQL-definition)
     _ADDED_COLUMNS = [
         ("items", "optional", "BOOLEAN NOT NULL DEFAULT 0"),
+        ("items", "has_video", "BOOLEAN NOT NULL DEFAULT 0"),
+        ("items", "qlab_cue", "VARCHAR(40) NOT NULL DEFAULT ''"),
+        ("items", "qlab_loaded", "BOOLEAN NOT NULL DEFAULT 0"),
     ]
 
     def _migrate(self) -> None:

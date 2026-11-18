@@ -9,6 +9,7 @@
   var seenRequests = {}; // id -> requested_at, til fremhævelse af nye anmodninger
   var placeFor = null;    // det valgte punkt, som "Indsæt"-vælgeren sidst blev sat efter
   var dragId = null;      // punkt, der trækkes
+  var listFilter = "all"; // all | video | novideo
 
   var $ = function (id) { return document.getElementById(id); };
 
@@ -22,8 +23,10 @@
     if (dur === null) { L.toast("Varighed skal angives som mm:ss eller minutter.", "error"); return; }
     var btn = e.target.querySelector("button[type=submit]");
     L.run(btn, function () {
+      var t = L.parseTypeValue($("qa-type").value);
       var payload = {
-        title: title, item_type: $("qa-type").value, duration_seconds: dur, optional: $("qa-optional").checked
+        title: title, item_type: t.item_type, has_video: t.has_video, duration_seconds: dur,
+        optional: $("qa-optional").checked
       };
       var place = $("qa-place").value;
       if (place === "selected" && selectedId != null) payload.after_id = selectedId;
@@ -129,28 +132,54 @@
     if (sel.selectedOptions[0] && sel.selectedOptions[0].disabled) sel.value = "bottom";
   }
 
+  function renderVideoSummary(all) {
+    var vids = all.filter(function (i) { return i.has_video; });
+    var box = $("video-summary");
+    if (!vids.length) { box.hidden = true; return; }
+    var loaded = vids.filter(function (i) { return i.qlab_loaded; }).length;
+    var missing = vids.length - loaded;
+    box.hidden = false;
+    box.className = "video-summary" + (missing ? " has-missing" : " all-ok");
+    box.innerHTML = "🎬 <strong>" + vids.length + "</strong> punkt" + (vids.length === 1 ? "" : "er") + " med video · " +
+      (missing ? '<span class="vs-missing">' + missing + " ikke indlæst i QLab</span>" : '<span class="vs-ok">alle indlæst i QLab ✓</span>') +
+      (listFilter !== "video" ? ' <button type="button" class="btn btn-sm btn-ghost" data-filter="video">Vis dem</button>' : "");
+  }
+
   function renderList() {
-    var list = L.active();
-    $("active-count").textContent = "(" + list.length + " aktive)";
+    var all = L.active();
+    var filtered = listFilter !== "all";
+    var list = all.filter(function (i) {
+      return listFilter === "all" || (listFilter === "video" ? i.has_video : !i.has_video);
+    });
+    $("active-count").textContent = filtered ? "(" + list.length + " af " + all.length + " aktive)" : "(" + all.length + " aktive)";
+    renderVideoSummary(all);
+    var btns = document.querySelectorAll(".list-filter [data-filter]");
+    for (var b = 0; b < btns.length; b++) btns[b].setAttribute("aria-pressed", String(btns[b].getAttribute("data-filter") === listFilter));
+    $("item-list").classList.toggle("is-filtered", filtered);
     var html = list.map(function (item, idx) {
+      var num = all.indexOf(item) + 1; // nummer i hele programmet, også når der er filtreret
       var cls = "item-row st-row-" + item.status + (item.id === selectedId ? " selected" : "") + (item.optional ? " is-optional" : "");
       if (item.status === "requested") cls += " attention";
       if (item.status === "live") cls += " live-hl";
       return '<li class="' + cls + '" data-id="' + item.id + '" tabindex="0">' +
-        '<span class="row-grip" draggable="true" title="Træk for at flytte" aria-hidden="true">⋮⋮</span>' +
-        '<span class="row-num">' + (idx + 1) + "</span>" +
+        (filtered ? '<span class="row-grip"></span>'
+          : '<span class="row-grip" draggable="true" title="Træk for at flytte" aria-hidden="true">⋮⋮</span>') +
+        '<span class="row-num">' + num + "</span>" +
         '<span class="row-main"><span class="row-title">' + esc(item.title) + "</span>" +
-        '<span class="row-meta">' + L.typeChip(item.item_type) + L.optChip(item) +
+        '<span class="row-meta">' + L.typeChip(item) + L.optChip(item) + L.qlabChip(item, true) +
         (item.technical_notes ? '<span class="row-note" title="' + esc(item.technical_notes) + '">✎ ' + esc(item.technical_notes) + "</span>" : "") +
         "</span></span>" +
         '<span class="row-status">' + L.statusBadge(item.status) + "</span>" +
         '<span class="row-dur"><span title="Forventet">' + L.fmtItemDur(item) + "</span>" + rowActual(item) + "</span>" +
-        '<span class="row-move">' +
+        '<span class="row-move">' + (filtered ? "" :
         '<button type="button" class="btn btn-icon" data-move="up" aria-label="Flyt op"' + (idx === 0 ? " disabled" : "") + ">▲</button>" +
-        '<button type="button" class="btn btn-icon" data-move="down" aria-label="Flyt ned"' + (idx === list.length - 1 ? " disabled" : "") + ">▼</button>" +
+        '<button type="button" class="btn btn-icon" data-move="down" aria-label="Flyt ned"' + (idx === list.length - 1 ? " disabled" : "") + ">▼</button>") +
         "</span></li>";
     }).join("");
-    $("item-list").innerHTML = html || '<li class="empty">Ingen aktive punkter. Opret et ovenfor.</li>';
+    var empty = filtered
+      ? '<li class="empty">Ingen aktive punkter ' + (listFilter === "video" ? "med" : "uden") + ' video.</li>'
+      : '<li class="empty">Ingen aktive punkter. Opret et ovenfor.</li>';
+    $("item-list").innerHTML = html || empty;
   }
 
   function renderArchive() {
@@ -160,7 +189,7 @@
     $("archive-list").innerHTML = list.map(function (item) {
       return '<li class="item-row st-row-' + item.status + (item.id === selectedId ? " selected" : "") + '" data-id="' + item.id + '" tabindex="0">' +
         '<span class="row-num">' + L.fmtClock(item.ended_at || item.updated_at) + "</span>" +
-        '<span class="row-main"><span class="row-title">' + esc(item.title) + '</span><span class="row-meta">' + L.typeChip(item.item_type) + "</span></span>" +
+        '<span class="row-main"><span class="row-title">' + esc(item.title) + '</span><span class="row-meta">' + L.typeChip(item) + "</span></span>" +
         '<span class="row-status">' + L.statusBadge(item.status) + "</span>" +
         '<span class="row-dur"><span title="Forventet">' + L.fmtItemDur(item) + "</span>" + rowActual(item) + "</span>" +
         '<span class="row-move"><button type="button" class="btn btn-sm" data-reopen="1">Genåbn</button></span></li>';
@@ -176,7 +205,7 @@
     box.hidden = false;
     box.innerHTML = reqs.map(function (r) {
       return '<div class="request-alert-row"><span class="badge-icon" aria-hidden="true">⚑</span>' +
-        "<span><strong>Scenen ønsker klargjort:</strong> " + esc(r.title) + " " + L.typeChip(r.item_type) + " " + L.optChip(r) + "</span>" +
+        "<span><strong>Scenen ønsker klargjort:</strong> " + esc(r.title) + " " + L.typeChip(r) + " " + L.optChip(r) + "</span>" +
         '<button type="button" class="btn btn-ready" data-act="ready" data-id="' + r.id + '">✓ Markér klar</button></div>';
     }).join("");
     if (fresh) { box.classList.remove("flash"); void box.offsetWidth; box.classList.add("flash"); }
@@ -196,7 +225,7 @@
       : '<span class="muted">' + L.fmtItemDur(cur) + "</span>";
     el.innerHTML = '<div class="card-label">Afvikles nu ' + L.statusBadge("live") + "</div>" +
       '<div class="now-title">' + esc(cur.title) + "</div>" +
-      '<div class="now-meta">' + L.typeChip(cur.item_type) + L.optChip(cur) +
+      '<div class="now-meta">' + L.typeChip(cur) + L.optChip(cur) + L.qlabChip(cur, true) +
       "<span>Start " + L.fmtClockSec(cur.started_at) + "</span>" + timing + "</div>" +
       '<div class="card-actions"><button type="button" class="btn btn-lg btn-finish" data-act="finish" data-id="' + cur.id + '">■ Afslut <kbd>.</kbd></button></div>';
   }
@@ -215,7 +244,7 @@
     el.innerHTML = '<div class="card-label">' + (fallback ? "Næste i programmet <span class=\"muted\">(ikke valgt af scenen)</span>" : "Næste (ønsket af scenen)") + "</div>" + list.map(function (n) {
       return '<div class="next-row st-row-' + n.status + '">' +
         '<div class="next-info"><div class="next-title">' + esc(n.title) + "</div>" +
-        '<div class="now-meta">' + L.typeChip(n.item_type) + L.optChip(n) + L.statusBadge(n.status) + "<span>" + L.fmtItemDur(n) + "</span></div>" +
+        '<div class="now-meta">' + L.typeChip(n) + L.optChip(n) + L.qlabChip(n, true) + L.statusBadge(n.status) + "<span>" + L.fmtItemDur(n) + "</span></div>" +
         (n.technical_notes ? '<div class="note">' + esc(n.technical_notes) + "</div>" : "") + "</div>" +
         '<div class="card-actions">' +
         (n.status === "requested" || n.status === "pending" ? '<button type="button" class="btn btn-ready" data-act="ready" data-id="' + n.id + '">✓ Klar' + key(n, "M") + "</button>" : "") +
@@ -243,8 +272,9 @@
   function fillEditor(item) {
     var el = $("editor-card");
     editor = { id: item.id, version: item.version, dirty: false };
-    var typeOpts = Object.keys(L.TYPES).map(function (k) {
-      return '<option value="' + k + '"' + (k === item.item_type ? " selected" : "") + ">" + L.TYPES[k] + "</option>";
+    var tv = L.typeValue(item);
+    var typeOpts = L.TYPE_OPTIONS.map(function (o) {
+      return '<option value="' + o[0] + '"' + (o[0] === tv ? " selected" : "") + ">" + o[1] + "</option>";
     }).join("");
     var actual = L.elapsed(item);
     el.innerHTML =
@@ -257,6 +287,9 @@
       '<fieldset class="span2 opt-field"><legend>Afvikling</legend>' +
       '<label class="radio"><input type="radio" name="optional" value="0"' + (item.optional ? "" : " checked") + '> <span class="chip chip-required">Skal</span> Skal afvikles</label>' +
       '<label class="radio"><input type="radio" name="optional" value="1"' + (item.optional ? " checked" : "") + '> <span class="chip chip-optional">Mulighed</span> Kan springes over</label></fieldset>' +
+      '<fieldset class="span2 opt-field qlab-field" id="ed-qlab-field"' + (item.has_video ? "" : " hidden") + '><legend>🎬 Video i QLab</legend>' +
+      '<label>QLab-cue <input name="qlab_cue" maxlength="40" placeholder="f.eks. 12" value="' + esc(item.qlab_cue) + '"></label>' +
+      '<div id="ed-qlab" class="ed-qlab"></div></fieldset>' +
       '<label class="span2">Beskrivelse<textarea name="description" rows="2" maxlength="5000">' + esc(item.description) + "</textarea></label>" +
       '<label class="span2">Tekniske noter <small class="muted">(vises på teknikermonitoren)</small><textarea name="technical_notes" rows="2" maxlength="5000">' + esc(item.technical_notes) + "</textarea></label>" +
       '<div class="editor-times span2 muted">' +
@@ -273,6 +306,10 @@
 
     var form = $("ed-form");
     form.addEventListener("input", function () { editor.dirty = true; $("ed-save").disabled = false; });
+    form.item_type.addEventListener("change", function () {
+      $("ed-qlab-field").hidden = !L.parseTypeValue(form.item_type.value).has_video && form.item_type.value !== "video";
+    });
+    renderEditorQlab(item);
     form.addEventListener("submit", function (e) {
       e.preventDefault();
       var dur = L.parseDur(form.duration.value);
@@ -280,7 +317,9 @@
       var payload = {
         expected_version: editor.version,
         title: form.title.value.trim(),
-        item_type: form.item_type.value,
+        item_type: L.parseTypeValue(form.item_type.value).item_type,
+        has_video: L.parseTypeValue(form.item_type.value).has_video,
+        qlab_cue: form.qlab_cue.value.trim(),
         duration_seconds: dur,
         description: form.description.value,
         technical_notes: form.technical_notes.value,
@@ -325,6 +364,20 @@
     $("ed-status").innerHTML = L.statusBadge(item.status);
     $("ed-actions").innerHTML = actionButtons(item);
     $("ed-place").innerHTML = placeButtons(item);
+    renderEditorQlab(item);
+  }
+
+  // "Indlæst i QLab" gemmes med det samme (uden "Gem ændringer") og opdateres live.
+  function renderEditorQlab(item) {
+    var el = $("ed-qlab");
+    if (!el) return;
+    if (!item.has_video) {
+      el.innerHTML = '<span class="muted">Gem først, så kan videoen markeres som indlæst.</span>';
+      return;
+    }
+    el.innerHTML = '<button type="button" class="btn ' + (item.qlab_loaded ? "btn-qlab-ok" : "btn-qlab") + '" data-qlab="' + item.id + '">' +
+      (item.qlab_loaded ? "✓ Indlæst i QLab" : "Markér som indlæst i QLab") + "</button>" +
+      (item.qlab_loaded ? ' <span class="muted">Klik for at fjerne markeringen</span>' : "");
   }
 
   function placeButtons(item) {
@@ -357,6 +410,22 @@
       if (q && !confirm(q)) return;
       if (action === "finish") { doFinish(item, actBtn); return; }
       L.run(actBtn, function () { return L.action(item, action); });
+      return;
+    }
+    var qlabBtn = e.target.closest("[data-qlab]");
+    if (qlabBtn) {
+      var qi = L.byId(parseInt(qlabBtn.getAttribute("data-qlab"), 10));
+      if (!qi) return;
+      var loaded = !qi.qlab_loaded;
+      L.run(qlabBtn, function () {
+        return L.api("POST", "/api/items/" + qi.id + "/qlab", { loaded: loaded });
+      }, loaded ? '🎬 "' + qi.title + '" indlæst i QLab' : '"' + qi.title + '" ikke længere markeret som indlæst');
+      return;
+    }
+    var filterBtn = e.target.closest("[data-filter]");
+    if (filterBtn) {
+      listFilter = filterBtn.getAttribute("data-filter");
+      renderList();
       return;
     }
     var placeBtn = e.target.closest("[data-place]");
@@ -556,7 +625,8 @@
 
   var ACTION_NAMES = { create: "Oprettet", edit: "Redigeret", delete: "Slettet", move: "Flyttet",
     request: "Anmodet", withdraw: "Anmodning trukket", ready: "Klar", start: "Startet",
-    finish: "Afsluttet", cancel: "Annulleret", reopen: "Genåbnet", unfinish: "Afslutning fortrudt" };
+    finish: "Afsluttet", cancel: "Annulleret", reopen: "Genåbnet", unfinish: "Afslutning fortrudt",
+    qlab: "QLab" };
 
   function loadHistory() {
     L.api("GET", "/api/events?limit=300").then(function (data) {

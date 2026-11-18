@@ -11,7 +11,7 @@ Placement = Literal["bottom", "top", "after_live"]
 
 
 class _Text(BaseModel):
-    @field_validator("title", "description", "technical_notes", mode="before", check_fields=False)
+    @field_validator("title", "description", "technical_notes", "qlab_cue", mode="before", check_fields=False)
     @classmethod
     def _strip(cls, v):
         return v.strip() if isinstance(v, str) else v
@@ -24,6 +24,9 @@ class ItemCreate(_Text):
     technical_notes: str = Field(default="", max_length=5000)
     duration_seconds: int = Field(default=0, ge=0, le=24 * 3600)
     optional: bool = False
+    has_video: bool = False
+    qlab_cue: str = Field(default="", max_length=40)
+    qlab_loaded: bool = False
     # Placering ved oprettelse (standard: sidst)
     after_id: Optional[int] = None
     place: Optional[Placement] = None
@@ -37,6 +40,14 @@ class ItemUpdate(_Text):
     technical_notes: Optional[str] = Field(default=None, max_length=5000)
     duration_seconds: Optional[int] = Field(default=None, ge=0, le=24 * 3600)
     optional: Optional[bool] = None
+    has_video: Optional[bool] = None
+    qlab_cue: Optional[str] = Field(default=None, max_length=40)
+
+
+class QlabRequest(BaseModel):
+    """Markér videoen som indlæst (eller ikke indlæst) i QLab."""
+
+    loaded: bool
 
 
 class ActionRequest(BaseModel):

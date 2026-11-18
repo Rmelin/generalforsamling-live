@@ -68,8 +68,41 @@
     return '<span class="badge st-' + esc(status) + big + '"><span class="badge-icon" aria-hidden="true">' +
       s.icon + "</span>" + esc(s.label) + "</span>";
   }
-  function typeChip(t) {
-    return '<span class="chip type-' + esc(t) + '">' + esc(TYPES[t] || t) + "</span>";
+  // Tager et punkt (eller bare en type). Tale/Andet med video vises som "Tale" + "🎬 video".
+  function typeChip(item) {
+    var t = typeof item === "string" ? item : item.item_type;
+    var html = '<span class="chip type-' + esc(t) + '">' + esc(TYPES[t] || t) + "</span>";
+    if (typeof item === "object" && item.has_video && t !== "video") {
+      html = '<span class="chip-join" title="' + esc(TYPES[t] || t) + ' med video undervejs">' + html +
+        '<span class="chip type-video chip-plus-video">+ 🎬 video</span></span>';
+    }
+    return html;
+  }
+
+  // Typevalg i formularer: Tale og Andet findes også "+ video".
+  var TYPE_OPTIONS = [
+    ["speech", "Tale"], ["speech+video", "Tale + video"], ["video", "Video"],
+    ["other", "Andet"], ["other+video", "Andet + video"]
+  ];
+  function typeValue(item) {
+    return item.item_type + (item.has_video && item.item_type !== "video" ? "+video" : "");
+  }
+  function parseTypeValue(v) {
+    var parts = String(v || "speech").split("+");
+    return { item_type: parts[0], has_video: parts[0] !== "video" && parts[1] === "video" };
+  }
+
+  // QLab-status for punkter med video. Med clickable bliver det en knap (FOH).
+  function qlabChip(item, clickable) {
+    if (!item.has_video) return "";
+    var cue = item.qlab_cue ? "QLab " + item.qlab_cue : "QLab";
+    var ok = item.qlab_loaded;
+    var cls = "chip chip-qlab " + (ok ? "qlab-ok" : "qlab-missing");
+    var text = cue + (ok ? " ✓" : " – ikke indlæst");
+    var title = ok ? "Videoen er indlæst i QLab" : "Videoen er ikke markeret som indlæst i QLab";
+    if (!clickable) return '<span class="' + cls + '" title="' + title + '">' + esc(text) + "</span>";
+    return '<button type="button" class="' + cls + '" data-qlab="' + item.id + '" title="' + title +
+      ' – klik for at ændre">' + esc(text) + "</button>";
   }
 
   // Kun video har en fast længde, der tælles ned. Tale og Andet er ca.-tider.
@@ -101,7 +134,8 @@
   var Live = {
     STATUS: STATUS, TYPES: TYPES,
     esc: esc, fmtDur: fmtDur, parseDur: parseDur, fmtClock: fmtClock, fmtClockSec: fmtClockSec,
-    statusBadge: statusBadge, typeChip: typeChip, parseIso: parseIso,
+    statusBadge: statusBadge, typeChip: typeChip, parseIso: parseIso, qlabChip: qlabChip,
+    TYPE_OPTIONS: TYPE_OPTIONS, typeValue: typeValue, parseTypeValue: parseTypeValue,
     isTimed: isTimed, fmtItemDur: fmtItemDur, countdown: countdown, optChip: optChip,
     items: [], revision: -1, dbId: null, offset: 0, connected: false, hasState: false,
 

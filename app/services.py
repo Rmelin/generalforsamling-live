@@ -73,6 +73,10 @@ def item_to_dict(item: Item) -> dict[str, Any]:
         "technical_notes": item.technical_notes or "",
         "duration_seconds": item.duration_seconds,
         "optional": bool(item.optional),
+        # Video-typen har altid video; Tale og Andet kan have video undervejs.
+        "has_video": item.item_type == "video" or bool(item.has_video),
+        "qlab_cue": item.qlab_cue or "",
+        "qlab_loaded": bool(item.qlab_loaded),
         "status": item.status,
         "sort_order": item.sort_order,
         "version": item.version,
@@ -191,6 +195,7 @@ def device_state(db: Database) -> dict[str, Any]:
         out = {
             "id": it["id"], "title": it["title"], "item_type": it["item_type"],
             "status": it["status"], "optional": it["optional"],
+            "has_video": it["has_video"], "qlab_loaded": it["qlab_loaded"],
             "duration_seconds": it["duration_seconds"],
             "timed": it["item_type"] == "video" and it["duration_seconds"] > 0,
         }
@@ -245,6 +250,9 @@ def create_item(db: Database, data: ItemCreate, actor: Actor) -> dict[str, Any]:
             technical_notes=data.technical_notes,
             duration_seconds=data.duration_seconds,
             optional=data.optional,
+            has_video=data.has_video,
+            qlab_cue=data.qlab_cue,
+            qlab_loaded=data.qlab_loaded,
             status=st.PENDING,
             sort_order=max_order + 10,
             version=1,
@@ -289,7 +297,8 @@ def import_items(db: Database, rows: list[ItemCreate], replace: bool, actor: Act
             item = Item(
                 title=data.title, item_type=data.item_type, description=data.description,
                 technical_notes=data.technical_notes, duration_seconds=data.duration_seconds,
-                optional=data.optional, status=st.PENDING, sort_order=order, version=1,
+                optional=data.optional, has_video=data.has_video, qlab_cue=data.qlab_cue,
+                qlab_loaded=data.qlab_loaded, status=st.PENDING, sort_order=order, version=1,
                 created_at=now, updated_at=now,
             )
             s.add(item)
@@ -322,6 +331,24 @@ def update_item(db: Database, item_id: int, data: ItemUpdate, actor: Actor) -> d
         _log(s, actor, "edit", item, item.status, item.status, ", ".join(changed_fields))
         _bump_revision(s)
         return item_to_dict(item)
+
+
+def set_qlab_loaded(db: Database, item_id: int, loaded: bool, actor: Actor) -> bool:
+    """Markér om videoen er indlæst i QLab.
+
+    Ændrer ikke punktets versionsnummer: QLab-tjekket må ikke give konflikt
+    med en anden, der samtidig redigerer punktets tekst.
+    """
+    with db.write() as s:
+        item = _get_item(s, item_id)
+        if bool(item.qlab_loaded) == loaded:
+            return False
+        item.qlab_loaded = loaded
+        item.updated_at = utcnow()
+        _log(s, actor, "qlab", item, item.status, item.status,
+             "Indlæst i QLab" if loaded else "Ikke indlæst i QLab")
+        _bump_revision(s)
+        return True
 
 
 def delete_item(db: Database, item_id: int, actor: Actor) -> None:

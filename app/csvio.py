@@ -24,10 +24,17 @@ MAX_ROWS = 1000
 
 EXPORT_COLUMNS = [
     "nr", "titel", "type", "varighed", "afvikling", "beskrivelse", "tekniske_noter",
-    "status", "start", "slut", "faktisk_varighed",
+    "qlab_cue", "indlaest_i_qlab", "status", "start", "slut", "faktisk_varighed",
 ]
 
 TYPE_LABEL = {"speech": "Tale", "video": "Video", "other": "Andet"}
+
+
+def type_label(it: dict[str, Any]) -> str:
+    label = TYPE_LABEL.get(it["item_type"], it["item_type"])
+    if it["item_type"] != "video" and it.get("has_video"):
+        label += " + video"
+    return label
 
 
 # ---------------------------------------------------------------- hjælpere
@@ -69,11 +76,13 @@ def export_csv(items: list[dict[str, Any]], tz_name: str = "Europe/Copenhagen") 
         w.writerow([
             n,
             it["title"],
-            TYPE_LABEL.get(it["item_type"], it["item_type"]),
+            type_label(it),
             fmt_duration(it["duration_seconds"]),
             "Mulighed" if it.get("optional") else "Skal",
             it.get("description", ""),
             it.get("technical_notes", ""),
+            it.get("qlab_cue", ""),
+            ("Ja" if it.get("qlab_loaded") else "Nej") if it.get("has_video") else "",
             st.STATUS_LABELS.get(it["status"], it["status"]),
             _local(it.get("started_at"), tz),
             _local(it.get("ended_at"), tz),
@@ -85,10 +94,14 @@ def export_csv(items: list[dict[str, Any]], tz_name: str = "Europe/Copenhagen") 
 def template_csv() -> str:
     buf = io.StringIO()
     w = csv.writer(buf, delimiter=";", lineterminator="\r\n")
-    w.writerow(["titel", "type", "varighed", "afvikling", "beskrivelse", "tekniske_noter"])
-    w.writerow(["Velkomst ved formanden", "Tale", "5:00", "Skal", "", "Talerpult-mikrofon"])
-    w.writerow(["Intro-video", "Video", "1:35", "Skal", "Åbningsfilm", "Video med lyd – klargør afspiller"])
-    w.writerow(["Hilsen fra samarbejdspartner", "Tale", "5", "Mulighed", "Kun hvis tiden tillader det", ""])
+    w.writerow(["titel", "type", "varighed", "afvikling", "beskrivelse", "tekniske_noter", "qlab_cue",
+                "indlaest_i_qlab"])
+    w.writerow(["Velkomst ved formanden", "Tale", "5:00", "Skal", "", "Talerpult-mikrofon", "", ""])
+    w.writerow(["Intro-video", "Video", "1:35", "Skal", "Åbningsfilm", "Video med lyd", "1", "Nej"])
+    w.writerow(["Årsberetning", "Tale + video", "15", "Skal", "", "Video efter ca. 5 min på stikord", "2",
+                "Nej"])
+    w.writerow(["Hilsen fra samarbejdspartner", "Tale", "5", "Mulighed", "Kun hvis tiden tillader det", "",
+                "", ""])
     return "﻿" + buf.getvalue()
 
 
@@ -102,6 +115,9 @@ _HEADER_ALIASES = {
     "description": {"beskrivelse", "description", "info"},
     "technical_notes": {"tekniske_noter", "tekniske noter", "teknik", "noter", "technical_notes",
                         "technical notes", "teknisk note"},
+    "qlab_cue": {"qlab_cue", "qlab cue", "cue", "qlab-cue", "qlab"},
+    "qlab_loaded": {"indlaest_i_qlab", "indlæst_i_qlab", "indlæst i qlab", "indlaest i qlab", "indlæst",
+                    "indlaest", "qlab_indlaest", "qlab indlæst", "qlab_loaded"},
 }
 
 _TYPE_VALUES = {
@@ -146,14 +162,26 @@ def parse_duration(value: str) -> int:
     raise ValueError(f"ugyldig varighed '{value}' (brug fx 5:00 eller 5)")
 
 
-def _parse_type(value: str) -> str:
-    v = value.strip().lower()
+def _parse_type(value: str) -> tuple[str, bool]:
+    """Returnerer (type, med video). 'Tale + video', 'tale med video' og 'Andet+video' giver video."""
+    v = re.sub(r"\s+", " ", value.strip().lower())
     if not v:
-        return "speech"
+        return "speech", False
+    m = re.fullmatch(r"(.+?)\s*(?:\+|med|og|/)\s*(?:video|film)", v)
+    base, with_video = (m.group(1), True) if m else (v, False)
     for key, names in _TYPE_VALUES.items():
-        if v in names:
-            return key
-    raise ValueError(f"ukendt type '{value}' (brug Tale, Video eller Andet)")
+        if base in names:
+            return key, with_video or key == "video"
+    raise ValueError(f"ukendt type '{value}' (brug Tale, Tale + video, Video, Andet eller Andet + video)")
+
+
+def _parse_yes(value: str, what: str) -> bool:
+    v = value.strip().lower()
+    if v in {"ja", "j", "x", "1", "true", "yes", "✓", "indlæst", "indlaest"}:
+        return True
+    if v in {"", "nej", "n", "0", "false", "no", "-"}:
+        return False
+    raise ValueError(f"ukendt {what} '{value}' (brug Ja eller Nej)")
 
 
 def _parse_optional(value: str) -> bool:
@@ -219,9 +247,13 @@ def parse_csv(text: str) -> list[ItemCreate]:
             if field and field not in values:
                 values[field] = cell.strip()
         try:
+            item_type, has_video = _parse_type(values.get("item_type", ""))
             data = ItemCreate(
                 title=values.get("title", ""),
-                item_type=_parse_type(values.get("item_type", "")),
+                item_type=item_type,
+                has_video=has_video and item_type != "video",
+                qlab_cue=values.get("qlab_cue", ""),
+                qlab_loaded=_parse_yes(values.get("qlab_loaded", ""), "værdi for indlæst i QLab"),
                 duration_seconds=parse_duration(values.get("duration", "")),
                 optional=_parse_optional(values.get("optional", "")),
                 description=values.get("description", ""),

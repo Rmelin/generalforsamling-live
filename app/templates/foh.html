@@ -22,7 +22,11 @@
     <form id="quick-add" class="quick-add card" autocomplete="off">
       <input id="qa-title" name="title" placeholder="Nyt punkt – titel" maxlength="200" required aria-label="Titel">
       <select id="qa-type" name="item_type" aria-label="Type">
-        {% for key, label in item_types.items() %}<option value="{{ key }}">{{ label }}</option>{% endfor %}
+        <option value="speech">Tale</option>
+        <option value="speech+video">Tale + video</option>
+        <option value="video">Video</option>
+        <option value="other">Andet</option>
+        <option value="other+video">Andet + video</option>
       </select>
       <input id="qa-duration" name="duration" placeholder="mm:ss" inputmode="numeric" aria-label="Varighed (mm:ss)" class="input-duration">
       <select id="qa-place" aria-label="Indsæt" title="Hvor det nye punkt skal placeres">
@@ -51,8 +55,8 @@
         </form>
         <div id="import-result" class="import-result" hidden></div>
         <p class="muted io-help">
-          Kolonner: <strong>titel</strong> (påkrævet), type (Tale / Video / Andet), varighed (5:00 eller 5 = 5 min),
-          afvikling (Skal / Mulighed), beskrivelse, tekniske_noter. Semikolon eller komma. Gem fra Excel som
+          Kolonner: <strong>titel</strong> (påkrævet), type (Tale / Tale + video / Video / Andet / Andet + video), varighed (5:00 eller 5 = 5 min),
+          afvikling (Skal / Mulighed), beskrivelse, tekniske_noter, qlab_cue, indlaest_i_qlab (Ja / Nej). Semikolon eller komma. Gem fra Excel som
           "CSV (semikolonsepareret)". Eksporten kan redigeres og importeres igen.
         </p>
       </div>
@@ -63,7 +67,13 @@
 
     <div class="list-head">
       <h2>Program <span class="muted" id="active-count"></span></h2>
+      <div class="list-filter" role="group" aria-label="Filtrér programmet">
+        <button type="button" class="btn btn-sm" data-filter="all" aria-pressed="true">Alle</button>
+        <button type="button" class="btn btn-sm" data-filter="video" aria-pressed="false">🎬 Med video</button>
+        <button type="button" class="btn btn-sm" data-filter="novideo" aria-pressed="false">Uden video</button>
+      </div>
     </div>
+    <div id="video-summary" class="video-summary" hidden></div>
     <ol id="item-list" class="item-list" aria-live="polite"></ol>
 
     <section id="archive" class="archive" hidden>
@@ -100,4 +110,4 @@
   <p class="muted">Tasterne virker ikke, mens du skriver i et felt. Klik et tomt sted på siden først.</p>
 </div>
 {% endblock %}
-{% block scripts %}<script src="{{ url_for('static', path='js/foh.js') }}?v=9"></script>{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', path='js/foh.js') }}?v=10"></script>{% endblock %}

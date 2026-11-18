@@ -91,6 +91,25 @@ Det punkt, der **afvikles**, har **rød kant og gul baggrund** på alle skærme,
 - **Tale** og **Andet** har kun en anslået tid og vises som `ca. 5 min`. Når de startes, står der kun
   **Afvikles**, uden et ur, der kører.
 
+### Video i talen og QLab
+
+Typen kan være **Tale + video** eller **Andet + video**. Det bruges, når en taler har en video undervejs i
+talen. Tiden er stadig en ca.-tid uden nedtælling. Nedtælling gælder kun for ren **Video**.
+
+- **Mærke:** Scenen, monitoren og FOH viser **TALE + 🎬 VIDEO**. Scenen kan derfor se, at der kommer en
+  video i talen, og at punktet ikke er en ren video.
+- **Filter i FOH:** Knapperne **Alle · 🎬 Med video · Uden video** over programmet. *Med video* viser ren
+  Video og Tale/Andet + video med programnummer. Rækkefølgen kan kun ændres i *Alle*.
+- **Oversigt:** Over listen står f.eks. *"🎬 3 punkter med video · 1 ikke indlæst i QLab"*.
+- **QLab-cue og "Indlæst i QLab":** Ved punkter med video kan FOH angive cue-nummeret og markere videoen som
+  **Indlæst i QLab**.
+  - **Hvor:** Klik på QLab-mærket i listen, i *Næste* eller i redigeringen. Det gemmes med det samme.
+  - **Adskilt fra *Klar*:** Klar betyder "klar til at gå på nu". Indlæst i QLab er forberedelsen før
+    arrangementet.
+  - **Ingen konflikt:** Markeringen giver ikke konflikt med en anden, der samtidig redigerer punktet.
+  - **Monitoren:** viser cue-nummeret og status (✓ eller *ikke indlæst*) for teknikerne.
+- **Presto:** viser `+VIDEO` og `!QLAB` (video ikke indlæst) ved næste punkt.
+
 ### Skal afvikles eller Mulighed
 
 Hvert punkt er enten **Skal** afvikles (standard) eller en **Mulighed**, der kan springes over, f.eks. hvis
@@ -173,7 +192,8 @@ I topbaren viser FOH, om scenen er tilsluttet:
 I FOH under **Import / eksport (CSV)**:
 
 - **Eksportér program** henter hele programmet som CSV-fil (`program-ÅÅÅÅ-MM-DD_TTMM.csv`) med titel,
-  type, varighed, Skal/Mulighed, beskrivelse, tekniske noter, status samt faktisk start, slut og varighed.
+  type, varighed, Skal/Mulighed, beskrivelse, tekniske noter, QLab-cue, indlæst i QLab, status samt
+  faktisk start, slut og varighed.
   Filen bruger semikolon og UTF-8, så den åbner direkte i dansk Excel. Den kan bruges som log efter
   arrangementet.
 - **Hent skabelon** henter en tom skabelon med eksempler.
@@ -185,11 +205,13 @@ I FOH under **Import / eksport (CSV)**:
 | Kolonne | Værdier | Påkrævet |
 |---|---|---|
 | `titel` | tekst | ja |
-| `type` | Tale, Video, Andet (tom = Tale) | nej |
+| `type` | Tale, Tale + video, Video, Andet, Andet + video (tom = Tale). Også "Tale med video" | nej |
 | `varighed` | `5:00`, `1:05:00`, `5` (= 5 min), `90s` | nej |
 | `afvikling` | Skal eller Mulighed (tom = Skal) | nej |
 | `beskrivelse` | tekst | nej |
 | `tekniske_noter` | tekst | nej |
+| `qlab_cue` | cue-nummer i QLab, f.eks. `12` | nej |
+| `indlaest_i_qlab` | Ja eller Nej (tom = Nej) | nej |
 
 - **Formater:** Semikolon, komma og tabulator accepteres, og det samme gør UTF-8 og Windows-1252. Gem fra Excel som *CSV
   (semikolonsepareret)*. Andre kolonner, f.eks. `status` og `start` fra en eksport, ignoreres. En eksport kan
@@ -250,6 +272,7 @@ Skrivekald kræver login og headeren `X-Live-Client: 1` (simpel CSRF-beskyttelse
 | DELETE | `/api/items/{id}` | FOH (blød sletning) |
 | POST | `/api/items/{id}/move` | FOH (`{"direction": "up"|"down"}`) |
 | POST | `/api/items/{id}/place` | FOH (`before_id`, `after_id` eller `where` = `top`/`bottom`/`after_live`) |
+| POST | `/api/items/{id}/qlab` | FOH (`{"loaded": true}` – indlæst i QLab) |
 | POST | `/api/items/{id}/actions/{action}` | FOH / Scene / enhed (`request`, `withdraw`, `ready`, `start`, `finish`, `cancel`, `reopen`, `unfinish`) |
 | GET | `/api/export.csv` | FOH (`?skabelon=1` for skabelon) |
 | POST | `/api/import` | FOH (multipart: `file`, `mode` = `append` eller `replace`) |

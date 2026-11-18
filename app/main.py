@@ -31,7 +31,7 @@ from .config import Settings, load_settings
 from .db import Database
 from .models import utcnow
 from .realtime import KIND_FOH, KIND_MONITOR, KIND_STAGE, Connection, ConnectionManager
-from .schemas import ActionRequest, ItemCreate, ItemUpdate, MoveRequest, PlaceRequest
+from .schemas import ActionRequest, ItemCreate, ItemUpdate, MoveRequest, PlaceRequest, QlabRequest
 from .seed import seed
 from .services import Actor, ServiceError
 
@@ -304,6 +304,12 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
     @app.post("/api/items/{item_id}/move", dependencies=write_guard)
     async def move_item(item_id: int, body: MoveRequest, actor: Actor = Depends(foh_only)):
         changed = await run_in_threadpool(services.move_item, db, item_id, body.direction, actor)
+        snap = await broadcast_state() if changed else await run_in_threadpool(services.snapshot, db)
+        return {"changed": changed, "state": snap}
+
+    @app.post("/api/items/{item_id}/qlab", dependencies=write_guard)
+    async def set_qlab(item_id: int, body: QlabRequest, actor: Actor = Depends(foh_only)):
+        changed = await run_in_threadpool(services.set_qlab_loaded, db, item_id, body.loaded, actor)
         snap = await broadcast_state() if changed else await run_in_threadpool(services.snapshot, db)
         return {"changed": changed, "state": snap}
 
