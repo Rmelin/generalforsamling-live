@@ -646,3 +646,38 @@ kbd {
 
 .toast-undo { border: 2px solid var(--accent); align-items: center; }
 .editor-place { gap: 6px; align-items: center; }
+
+/* ------------------------------------------------------------ tilsluttede skærme (FOH) */
+.screens-pill { display: inline-flex; align-items: center; gap: 10px; }
+.screens-seg { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; }
+.screens-seg[hidden] { display: none; }
+.screens-led, .screen-led { width: 10px; height: 10px; border-radius: 50%; background: var(--st-pending); flex: none; }
+.screens-seg.ok .screens-led, .screen-led.ok { background: var(--ok); }
+.screens-seg.warn .screens-led, .screen-led.warn { background: var(--st-requested); }
+.screens-seg.bad .screens-led, .screen-led.bad { background: var(--danger); }
+.screens-seg.bad { color: var(--danger); }
+.screens-seg.warn { color: var(--st-requested); }
+.screens-pill:has(#screens-stage.bad) { border-color: var(--danger); }
+
+.screens-panel { max-height: calc(100vh - 90px); overflow: auto; }
+.screens-panel p { font-size: 0.85rem; }
+.screens-group { margin: 12px 0 6px; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); }
+.screen-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.screen-row { display: flex; gap: 10px; align-items: flex-start; padding: 6px 8px; border-radius: 8px; background: var(--bg); }
+.screen-row .screen-led { margin-top: 5px; }
+.screen-name { font-weight: 700; }
+.screen-detail { font-size: 0.8rem; overflow-wrap: anywhere; }
+.screen-warn { font-size: 0.75rem; font-weight: 700; color: var(--st-requested); margin-left: 4px; }
+.screen-warn.bad { color: var(--danger); }
+.screen-none { margin: 0; color: var(--danger); font-weight: 700; }
+
+.stage-lost {
+  display: flex; gap: 12px; align-items: center; padding: 10px 14px; border-radius: 12px;
+  border: 2px solid var(--danger); background: color-mix(in srgb, var(--danger) 16%, var(--bg-elev));
+  animation: attention 0.7s ease-in-out 4;
+}
+.stage-lost[hidden] { display: none; }
+.stage-lost-icon { font-size: 1.6rem; color: var(--danger); }
+.stage-lost strong { display: block; color: var(--danger); font-size: 1.05rem; }
+.stage-lost span:not(.stage-lost-icon) { font-size: 0.9rem; }
+.screen-self { font-weight: 400; font-size: 0.8rem; }

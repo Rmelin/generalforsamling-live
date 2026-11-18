@@ -6,6 +6,10 @@
   <div class="topbar-tools">
     <label class="toggle"><input type="checkbox" id="toggle-archive"> Vis afsluttede</label>
     <label class="toggle"><input type="checkbox" id="toggle-history"> Historik</label>
+    <button type="button" class="btn btn-ghost btn-sm screens-pill" id="btn-screens" aria-expanded="false" aria-controls="screens-panel" title="Tilsluttede skærme">
+      <span class="screens-seg" id="screens-stage"><span class="screens-led"></span><span class="screens-text">Scene …</span></span>
+      <span class="screens-seg" id="screens-presto" hidden><span class="screens-led"></span><span class="screens-text">Presto</span></span>
+    </button>
     <button type="button" class="btn btn-ghost btn-sm" id="btn-keys" title="Tastaturgenveje (?)">⌨ Taster</button>
     {% include "_topbar_tools.html" %}
     <a class="btn btn-ghost btn-sm" href="/monitor" target="_blank" rel="noopener">Monitor ↗</a>
@@ -54,6 +58,7 @@
       </div>
     </details>
 
+    <div id="stage-lost" class="stage-lost" role="alert" hidden></div>
     <div id="request-alert" class="request-alert" hidden></div>
 
     <div class="list-head">
@@ -79,6 +84,11 @@
     </article>
   </section>
 </main>
+<div id="screens-panel" class="key-help card screens-panel" role="dialog" aria-label="Tilsluttede skærme" hidden>
+  <div class="card-head"><h2>Tilsluttede skærme</h2><button type="button" class="btn btn-ghost btn-sm" id="screens-close">Luk</button></div>
+  <div id="screens-body"></div>
+  <p class="muted">Giv en skærm et navn ved at åbne den med <code>?navn=</code>, f.eks. <code>/stage?navn=Talerstol</code>. Navnet huskes på skærmen.</p>
+</div>
 <div id="key-help" class="key-help card" role="dialog" aria-label="Tastaturgenveje" hidden>
   <div class="card-head"><h2>Tastaturgenveje</h2><button type="button" class="btn btn-ghost btn-sm" id="key-help-close">Luk</button></div>
   <table>
@@ -90,4 +100,4 @@
   <p class="muted">Tasterne virker ikke, mens du skriver i et felt. Klik et tomt sted på siden først.</p>
 </div>
 {% endblock %}
-{% block scripts %}<script src="{{ url_for('static', path='js/foh.js') }}?v=8"></script>{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', path='js/foh.js') }}?v=9"></script>{% endblock %}

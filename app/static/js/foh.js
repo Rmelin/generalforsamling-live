@@ -453,6 +453,7 @@
   function toggleKeyHelp(show) {
     var h = $("key-help");
     h.hidden = show === undefined ? !h.hidden : !show;
+    if (!h.hidden && $("screens-panel")) { $("screens-panel").hidden = true; $("btn-screens").setAttribute("aria-expanded", "false"); }
   }
   $("btn-keys").addEventListener("click", function () { toggleKeyHelp(); });
   $("key-help-close").addEventListener("click", function () { toggleKeyHelp(false); });
@@ -571,6 +572,127 @@
   var histTimer = null;
   function loadHistoryDebounced() { clearTimeout(histTimer); histTimer = setTimeout(loadHistory, 300); }
 
+  // ------------------------------------------------------------ tilsluttede skærme
+
+  var KIND_LABELS = { stage: "Scene", monitor: "Monitor", foh: "FOH", unknown: "Ældre version – genindlæs siden" };
+  var KIND_ORDER = ["stage", "monitor", "foh", "unknown"];
+  var lastStages = null;   // antal scener ved sidste oversigt (null = ukendt)
+  var stageLostAt = null;  // tidspunkt, hvor den sidste scene forsvandt
+
+  function ageSeconds(idle) {
+    return Math.max(0, idle + (Date.now() - L.presenceAt) / 1000);
+  }
+  function fmtAgo(sec) {
+    sec = Math.floor(sec);
+    if (sec < 5) return "lige nu";
+    if (sec < 90) return sec + " s siden";
+    if (sec < 5400) return Math.round(sec / 60) + " min siden";
+    return Math.round(sec / 3600) + " t siden";
+  }
+  function fmtEpoch(epoch) {
+    var d = new Date(epoch * 1000);
+    return (d.getHours() < 10 ? "0" : "") + d.getHours() + ":" + (d.getMinutes() < 10 ? "0" : "") + d.getMinutes();
+  }
+  function setSeg(seg, state, text, title) {
+    seg.classList.remove("ok", "warn", "bad", "unknown");
+    seg.classList.add(state);
+    seg.querySelector(".screens-text").textContent = text;
+    seg.title = title || "";
+  }
+
+  function renderScreens(p) {
+    var stageSeg = $("screens-stage"), prestoSeg = $("screens-presto");
+    if (!p) {
+      setSeg(stageSeg, "unknown", "Scene ?", "Ukendt – FOH har ikke forbindelse til serveren");
+      prestoSeg.hidden = true;
+      renderScreensPanel();
+      return; // uden forbindelse ved vi intet om scenen; advarslen røres ikke
+    }
+    var stages = p.clients.filter(function (c) { return c.kind === "stage"; });
+    var hidden = stages.filter(function (c) { return !c.visible; });
+    if (!stages.length) {
+      setSeg(stageSeg, "bad", "Ingen scene", "Ingen sceneskærm er tilsluttet");
+    } else if (hidden.length) {
+      setSeg(stageSeg, "warn", "Scene (" + stages.length + ") – skjult",
+        hidden.length + " sceneskærm(e) er skjult eller minimeret");
+    } else {
+      setSeg(stageSeg, "ok", "Scene (" + stages.length + ")", stages.length + " sceneskærm(e) tilsluttet");
+    }
+    var dev = p.devices[0];
+    prestoSeg.hidden = !dev;
+    if (dev) setSeg(prestoSeg, dev.online ? "ok" : "bad", "Presto",
+      dev.online ? "Presto er tilsluttet" : "Presto har ikke hentet data i " + fmtAgo(ageSeconds(dev.idle_seconds)));
+
+    // Advarsel, når den sidste scene forsvinder – og besked, når den er tilbage.
+    if (lastStages !== null && lastStages > 0 && stages.length === 0) {
+      stageLostAt = Date.now();
+    } else if (stages.length > 0 && stageLostAt !== null) {
+      stageLostAt = null;
+      L.toast("Scenen er tilsluttet igen.", "ok");
+    }
+    lastStages = stages.length;
+    renderStageLost();
+    renderScreensPanel();
+  }
+
+  function renderStageLost() {
+    var el = $("stage-lost");
+    if (stageLostAt === null) { el.hidden = true; return; }
+    el.hidden = false;
+    el.innerHTML = '<span class="stage-lost-icon" aria-hidden="true">⚠</span><div><strong>Scenen har mistet forbindelsen</strong>' +
+      '<span>' + esc(fmtAgo((Date.now() - stageLostAt) / 1000)) +
+      ' · Scenen ser ikke ændringer, før den er tilsluttet igen. Tjek skærm og netværk ved scenen.</span></div>';
+  }
+
+  function screenRow(c) {
+    var age = ageSeconds(c.idle_seconds);
+    var warn = !c.visible ? '<span class="screen-warn">Skjult / minimeret</span>' : "";
+    var detail = [c.ip || "ukendt IP", c.screen, "tilsluttet kl. " + fmtEpoch(c.connected_at), "sidste svar " + fmtAgo(age)]
+      .filter(Boolean).map(esc).join(" · ");
+    return '<li class="screen-row' + (c.visible ? "" : " is-hidden") + '" title="' + esc(c.user_agent || "") + '">' +
+      '<span class="screen-led ' + (c.visible ? "ok" : "warn") + '"></span>' +
+      '<div><div class="screen-name">' + esc(c.name || "Unavngivet") + " " + warn +
+      (c.id === L.connId ? ' <span class="muted screen-self">(denne skærm)</span>' : "") + '</div>' +
+      '<div class="muted screen-detail">' + detail + "</div></div></li>";
+  }
+
+  function renderScreensPanel() {
+    var panel = $("screens-panel");
+    if (panel.hidden) return;
+    var p = L.presence, body = $("screens-body");
+    if (!p) { body.innerHTML = '<p class="muted">Ingen forbindelse til serveren – kan ikke se tilsluttede skærme.</p>'; return; }
+    var html = "";
+    KIND_ORDER.forEach(function (kind) {
+      var list = p.clients.filter(function (c) { return c.kind === kind; });
+      if (!list.length && kind !== "stage") return;
+      html += '<h3 class="screens-group">' + esc(KIND_LABELS[kind]) + " (" + list.length + ")</h3>";
+      html += list.length ? '<ul class="screen-list">' + list.map(screenRow).join("") + "</ul>"
+        : '<p class="screen-none">Ingen sceneskærm er tilsluttet.</p>';
+    });
+    if (p.devices.length) {
+      html += '<h3 class="screens-group">Presto</h3><ul class="screen-list">' + p.devices.map(function (d) {
+        var age = ageSeconds(d.idle_seconds);
+        return '<li class="screen-row"><span class="screen-led ' + (d.online ? "ok" : "bad") + '"></span><div>' +
+          '<div class="screen-name">' + esc(d.name) + (d.online ? "" : ' <span class="screen-warn bad">Ikke tilsluttet</span>') + "</div>" +
+          '<div class="muted screen-detail">' + esc([d.ip, "sidst set " + fmtAgo(age)].filter(Boolean).join(" · ")) + "</div></div></li>";
+      }).join("") + "</ul>";
+    }
+    body.innerHTML = html;
+  }
+
+  function toggleScreens(show) {
+    var panel = $("screens-panel");
+    panel.hidden = show === undefined ? !panel.hidden : !show;
+    $("btn-screens").setAttribute("aria-expanded", String(!panel.hidden));
+    if (!panel.hidden) toggleKeyHelp(false);
+    renderScreensPanel();
+  }
+  $("btn-screens").addEventListener("click", function () { toggleScreens(); });
+  $("screens-close").addEventListener("click", function () { toggleScreens(false); });
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") toggleScreens(false); });
+  // Opdatér "for x s siden" løbende.
+  setInterval(function () { renderStageLost(); renderScreensPanel(); }, 2000);
+
   // ------------------------------------------------------------ start
 
   window.addEventListener("beforeunload", function (e) {
@@ -579,5 +701,7 @@
 
   L.initTheme();
   L.onState(render);
+  L.onPresence(renderScreens);
+  renderScreens(null);
   L.start();
 })();

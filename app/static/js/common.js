@@ -239,9 +239,53 @@
 
   var ws = null, retries = 0, lastMsg = 0, reconnectTimer = null, started = false;
 
+  // Hvilken skærm er dette? Bruges til at vise tilsluttede skærme i FOH.
+  var pageMatch = /(?:^|\s)page-(\w+)/.exec(document.body.className);
+  Live.page = pageMatch ? pageMatch[1] : "";
+
+  // Valgfrit skærmnavn:  /stage?navn=Talerstol  (gemmes i browseren, ?navn= nulstiller)
+  Live.screenName = (function () {
+    var key = "live-screen-name-" + Live.page;
+    try {
+      var v = new URLSearchParams(location.search).get("navn");
+      if (v !== null) {
+        v = v.trim().slice(0, 40);
+        if (v) localStorage.setItem(key, v); else localStorage.removeItem(key);
+      }
+      return localStorage.getItem(key) || "";
+    } catch (e) { return ""; }
+  })();
+
+  function send(obj) {
+    if (ws && ws.readyState === 1) { try { ws.send(JSON.stringify(obj)); } catch (e) {} }
+  }
+
+  function sendHello() {
+    send({
+      type: "hello",
+      page: Live.page,
+      name: Live.screenName,
+      screen: (window.screen ? screen.width + "x" + screen.height : ""),
+      visible: !document.hidden
+    });
+  }
+
+  // Tilsluttede skærme (kun FOH modtager dem).
+  Live.presence = null;
+  Live.presenceAt = 0;
+  var presenceListeners = [];
+  Live.onPresence = function (fn) { presenceListeners.push(fn); };
+  function notifyPresence() {
+    for (var i = 0; i < presenceListeners.length; i++) {
+      try { presenceListeners[i](Live.presence); } catch (e) { console.error(e); }
+    }
+  }
+
   function setConnected(ok) {
     var changed = Live.connected !== ok;
     Live.connected = ok;
+    // Uden forbindelse ved vi ikke, hvem der er tilsluttet.
+    if (!ok && Live.presence) { Live.presence = null; setTimeout(notifyPresence, 0); }
     if (changed) setTimeout(notifyAll, 0);
     document.body.classList.toggle("is-offline", !ok);
     var banner = document.getElementById("conn-banner");
@@ -262,7 +306,7 @@
     try { ws = new WebSocket(proto + location.host + "/ws"); }
     catch (e) { scheduleReconnect(); return; }
     var sock = ws;
-    sock.onopen = function () { lastMsg = Date.now(); };
+    sock.onopen = function () { lastMsg = Date.now(); sendHello(); };
     sock.onmessage = function (ev) {
       lastMsg = Date.now();
       var msg;
@@ -273,6 +317,13 @@
         if (!Live.connected) setConnected(true);
       } else if (msg.type === "ping" && msg.server_time) {
         Live.offset = parseIso(msg.server_time) - Date.now();
+        send({ type: "pong" });
+      } else if (msg.type === "welcome") {
+        Live.connId = msg.id;
+      } else if (msg.type === "presence") {
+        Live.presence = msg;
+        Live.presenceAt = Date.now();
+        notifyPresence();
       }
     };
     sock.onclose = function () {
@@ -304,6 +355,7 @@
 
   window.addEventListener("online", function () { retries = 0; connect(); });
   document.addEventListener("visibilitychange", function () {
+    send({ type: "visibility", visible: !document.hidden });
     if (!document.hidden && (!ws || ws.readyState > 1)) { retries = 0; connect(); }
   });
 

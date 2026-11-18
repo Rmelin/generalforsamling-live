@@ -9,6 +9,7 @@ import secrets
 from typing import Optional
 
 from fastapi import HTTPException, Request
+from starlette.requests import HTTPConnection
 from sqlalchemy import select
 
 from .config import Settings
@@ -76,7 +77,7 @@ def authenticate(db: Database, username: str, password: str) -> Optional[User]:
     return None
 
 
-def session_actor(request: Request) -> Optional[Actor]:
+def session_actor(request: HTTPConnection) -> Optional[Actor]:
     role = request.session.get("role")
     username = request.session.get("user")
     if role in (ROLE_FOH, ROLE_STAGE) and username:

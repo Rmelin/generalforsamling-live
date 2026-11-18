@@ -30,7 +30,7 @@ from .auth import (
 from .config import Settings, load_settings
 from .db import Database
 from .models import utcnow
-from .realtime import Connection, ConnectionManager
+from .realtime import KIND_FOH, KIND_MONITOR, KIND_STAGE, Connection, ConnectionManager
 from .schemas import ActionRequest, ItemCreate, ItemUpdate, MoveRequest, PlaceRequest
 from .seed import seed
 from .services import Actor, ServiceError
@@ -61,10 +61,16 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
     for warning in settings.warnings:
         log.warning(warning)
 
+    # En klient, der har sagt hello, svarer på hvert ping. Hører vi intet i
+    # to et halvt interval, er den væk (f.eks. en Pi, der har mistet WiFi).
+    stale_after = settings.ping_interval * 2.5
+
     async def ping_loop() -> None:
         while True:
             await asyncio.sleep(settings.ping_interval)
             manager.broadcast({"type": "ping", "server_time": services.iso(utcnow())})
+            manager.sweep(stale_after)
+            manager.send_presence()
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI):
@@ -197,9 +203,18 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
                 "username": actor.username if actor else None}
 
     @app.get("/api/device/state")
-    async def get_device_state(_actor: Actor = Depends(foh_or_device)):
+    async def get_device_state(request: Request, actor: Actor = Depends(foh_or_device)):
         """Kompakt tilstand til Presto og andre små enheder."""
+        if actor.role == st.ROLE_DEVICE:
+            ip = request.client.host if request.client else ""
+            if manager.device_seen("Presto", ip):
+                manager.send_presence()
         return await run_in_threadpool(services.device_state, db)
+
+    @app.get("/api/presence")
+    async def get_presence(_actor: Actor = Depends(foh_only)):
+        """Tilsluttede skærme og enheder (vises i FOH)."""
+        return manager.presence()
 
     @app.get("/api/events")
     async def get_events(limit: int = 300, _actor: Actor = Depends(foh_only)):
@@ -297,17 +312,46 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
     @app.websocket("/ws")
     async def websocket_endpoint(ws: WebSocket):
         await ws.accept()
-        conn = Connection(ws)
+        conn = Connection(ws, ip=ws.client.host if ws.client else "",
+                          user_agent=ws.headers.get("user-agent", ""))
+        # Hvilke skærmtyper må denne forbindelse melde sig som? Tjekkes mod login.
+        viewer = session_actor(ws)
+        allowed = {KIND_MONITOR}
+        if can_view(viewer, "stage"):
+            allowed.add(KIND_STAGE)
+        if can_view(viewer, "foh"):
+            allowed.add(KIND_FOH)
         snap = await run_in_threadpool(services.snapshot, db)
         conn.offer(json.dumps(snap, ensure_ascii=False))
         manager.add(conn)
 
         async def reader() -> None:
-            # Kanalen er envejs; vi læser kun for at opdage afbrydelser.
+            # Data ændres aldrig via WebSocket. Klienten sender kun hello (hvilken
+            # skærm den er), pong (svar på ping) og visibility (skærm skjult/vist).
             while True:
                 msg = await ws.receive()
                 if msg["type"] == "websocket.disconnect":
                     return
+                text = msg.get("text")
+                if not text or len(text) > 2000:
+                    continue
+                conn.touch()
+                try:
+                    data = json.loads(text)
+                except ValueError:
+                    continue
+                if not isinstance(data, dict):
+                    continue
+                kind = data.get("type")
+                if kind == "hello":
+                    manager.hello(conn, data, allowed)
+                    conn.offer(json.dumps({"type": "welcome", "id": conn.id, "kind": conn.kind}))
+                    manager.send_presence()
+                elif kind == "visibility":
+                    visible = data.get("visible") is not False
+                    if visible != conn.visible:
+                        conn.visible = visible
+                        manager.send_presence()
 
         writer_task = asyncio.create_task(conn.writer())
         reader_task = asyncio.create_task(reader())
@@ -321,7 +365,10 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
             writer_task.cancel()
             reader_task.cancel()
         finally:
+            was_listed = conn in manager.connections
             manager.remove(conn)
+            if was_listed or conn.greeted:
+                manager.send_presence()
             try:
                 await ws.close()
             except Exception:

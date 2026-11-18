@@ -143,6 +143,31 @@ tiden tillader det. FOH vælger det ved oprettelse (fluebenet *Mulighed*) og i r
 - **Feedback:** Knappen, tasten svarer til, blinker kort, og tasten står på knappen.
 - **Start mens noget afvikles:** beder om bekræftelse ligesom knappen.
 
+### Tilsluttede skærme (FOH)
+
+I topbaren viser FOH, om scenen er tilsluttet:
+
+| Visning | Betydning |
+|---|---|
+| **● Scene (1)** grøn | En eller flere sceneskærme er tilsluttet (antallet står i parentes) |
+| **● Scene (1) – skjult** gul | En sceneskærm er tilsluttet, men browseren er minimeret eller skjult |
+| **● Ingen scene** rød | Ingen sceneskærm er tilsluttet |
+| **● Scene ?** grå | FOH har selv mistet forbindelsen og kan ikke vide det |
+| **● Presto** | Vises, når en Presto har været tilsluttet. Rød, hvis den ikke har hentet data i 15 sekunder |
+
+- **Detaljer:** Klik på indikatoren for at se alle tilsluttede skærme. Listen viser scener, monitorer og
+  FOH med navn, IP-adresse, skærmstørrelse, hvornår de blev tilsluttet, og hvornår de sidst svarede.
+- **Når scenen forsvinder:** Mister den sidste scene forbindelsen, vises en rød advarsel i FOH: *"Scenen har
+  mistet forbindelsen"*. Når scenen er tilbage, forsvinder advarslen, og der kommer en grøn besked.
+- **Navngiv skærme:** Åbn skærmen med `?navn=`, f.eks. `/stage?navn=Talerstol` eller
+  `/monitor?navn=Lydpult`. Navnet huskes i browseren. `?navn=` uden værdi fjerner det.
+- **Opdagelse:** Hver skærm svarer på serverens ping hvert 10. sekund. Svarer en skærm ikke i 25 sekunder,
+  regnes den som væk. Det gælder også en Pi, der mister WiFi uden at lukke forbindelsen pænt.
+- **Ældre version – genindlæs siden:** Står en skærm sådan, kører den en gammel version af siden fra før
+  denne funktion. Genindlæs den.
+- **Begrænsning:** FOH kan se, at scene-siden er åben og forbundet. Den kan ikke se, om selve skærmen er
+  tændt.
+
 ### Import og eksport (CSV)
 
 I FOH under **Import / eksport (CSV)**:
@@ -229,7 +254,8 @@ Skrivekald kræver login og headeren `X-Live-Client: 1` (simpel CSRF-beskyttelse
 | GET | `/api/export.csv` | FOH (`?skabelon=1` for skabelon) |
 | POST | `/api/import` | FOH (multipart: `file`, `mode` = `append` eller `replace`) |
 | GET | `/api/device/state` | FOH / enhed (kompakt tilstand til Presto) |
-| WS | `/ws` | alle (kun læsning) |
+| GET | `/api/presence` | FOH (tilsluttede skærme og enheder) |
+| WS | `/ws` | alle (kun læsning). Klienten sender kun `hello`, `pong` og `visibility` |
 
 ## Tests
 
