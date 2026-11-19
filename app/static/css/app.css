@@ -316,6 +316,8 @@ label > input, label > select, label > textarea { color: var(--text); font-size:
 .item-row.attention { animation: attention 1.6s ease-in-out infinite; }
 .item-row.st-row-live { background: color-mix(in srgb, var(--st-live) 12%, var(--bg-elev)); }
 .item-list-archive .item-row { opacity: 0.85; }
+/* Arkivet har intet trækgreb: klokkeslæt, titel, status, tid, Genåbn */
+.item-list-archive .item-row { grid-template-columns: 44px minmax(0, 1fr) auto 86px auto; }
 .item-list-archive .st-row-cancelled .row-title { text-decoration: line-through; }
 .row-num { color: var(--text-muted); font-variant-numeric: tabular-nums; font-size: 0.85rem; text-align: right; }
 .row-main { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
@@ -359,7 +361,7 @@ label > input, label > select, label > textarea { color: var(--text); font-size:
 @media (max-width: 560px) {
   .quick-add { grid-template-columns: 1fr 1fr; }
   .quick-add #qa-title { grid-column: span 2; }
-  .item-row { grid-template-columns: 1fr auto; }
+  .item-row, .item-list-archive .item-row { grid-template-columns: 1fr auto; }
   .row-grip, .row-num, .row-move { display: none; }
   .row-status { grid-row: 2; }
   .editor-form { grid-template-columns: 1fr; }
